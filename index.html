@@ -3,229 +3,518 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Шахматы на фольге против Крокодила</title>
+    <title>Крокодильи Ставки</title>
     <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #fbbf24;
+            --text: #f8fafc;
+        }
         body {
             margin: 0;
             padding: 0;
             height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            background-color: #1a1a1a;
-            font-family: 'Courier New', Courier, monospace;
-            color: #fff;
+            overflow: hidden;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-
-        h1 {
-            font-size: 1.5em;
-            margin: 10px;
+        .header {
+            width: 100%;
             text-align: center;
-            color: #ccc;
-            text-shadow: 1px 1px 2px #000;
+            padding: 15px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+            background-color: rgba(0,0,0,0.3);
+            border-bottom: 2px solid var(--accent);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .balance { color: var(--accent); font-size: 1.3em; }
+        
+        /* Экраны */
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .screen.active { display: flex; }
+
+        /* Меню */
+        .menu-btn {
+            width: 80%;
+            max-width: 300px;
+            padding: 20px;
+            margin: 10px 0;
+            background-color: var(--card-bg);
+            border: 2px solid var(--accent);
+            color: var(--text);
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #b45309;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-align: center;
+        }
+        .menu-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #b45309;
         }
 
-        /* Доска из фольги */
-        .board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(5, 1fr);
-            width: 90vw;
-            max-width: 400px;
-            height: 90vw;
-            max-height: 400px;
-            /* Имитация мятой фольги через градиенты */
-            background: 
-                repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, transparent 2px, transparent 4px),
-                repeating-linear-gradient(-45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px),
-                radial-gradient(circle, #d4d4d4, #999);
-            border: 4px solid #777;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.5);
-            border-radius: 5px;
+        /* Крокодил */
+        .croco-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: flex-end;
+            z-index: 100;
+            pointer-events: none;
+        }
+        .croco-avatar {
+            font-size: 4em;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
+            animation: float 3s ease-in-out infinite;
+        }
+        .croco-speech {
+            background: white;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 20px 20px 20px 0;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+            margin-bottom: 20px;
+            max-width: 200px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: relative;
+            transition: opacity 0.3s;
+        }
+        .croco-speech::after {
+            content: '';
+            position: absolute;
+            left: -10px;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+            border-right-color: white;
+            border-bottom: 0;
         }
 
-        .cell {
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Кнопка назад */
+        .back-btn {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        /* Игра 1: Колесо */
+        .wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-bottom: 30px;
+        }
+        .wheel-pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.5em;
+            color: #ef4444;
+            z-index: 10;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid var(--accent);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(0,0,0,0.8);
+            background: conic-gradient(
+                #ef4444 0deg 45deg, 
+                #3b82f6 45deg 90deg, 
+                #10b981 90deg 135deg, 
+                #f59e0b 135deg 180deg,
+                #8b5cf6 180deg 225deg,
+                #ec4899 225deg 270deg,
+                #06b6d4 270deg 315deg,
+                #84cc16 315deg 360deg
+            );
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.1, 1);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 2.5em;
-            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        .wheel-center {
+            width: 60px;
+            height: 60px;
+            background: var(--bg-color);
+            border-radius: 50%;
+            border: 4px solid var(--accent);
+            z-index: 5;
+        }
+
+        /* Игра 2: Слоты */
+        .slots {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: #000;
+            padding: 20px;
+            border-radius: 15px;
+            border: 3px solid var(--accent);
+        }
+        .slot {
+            width: 70px;
+            height: 90px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        /* Игра 3: Карты */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .card-btn {
+            width: 100px;
+            height: 140px;
+            background: white;
+            border-radius: 10px;
+            border: none;
+            font-size: 3em;
             cursor: pointer;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.1s;
         }
+        .card-btn:active { transform: scale(0.95); }
+        .card-btn.red { color: #ef4444; }
+        .card-btn.black { color: #000; }
 
-        /* Клетки потемнее для шахматного вида */
-        .cell.dark {
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        /* Подсветка доступных ходов */
-        .cell.valid-move {
-            background-color: rgba(76, 175, 80, 0.5);
-            box-shadow: inset 0 0 15px #4CAF50;
-        }
-
-        .player { font-size: 1.2em; filter: drop-shadow(2px 2px 2px #000); color: white; }
-        .crocodile { font-size: 1.2em; filter: drop-shadow(2px 2px 2px #000); }
-
-        .message {
-            margin-top: 20px;
+        /* Общие кнопки действий */
+        .action-btn {
+            padding: 15px 40px;
             font-size: 1.2em;
             font-weight: bold;
-            height: 30px;
-            text-align: center;
-            color: #ffcc00;
-        }
-
-        button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 1.1em;
-            background-color: #555;
-            color: white;
-            border: 1px solid #888;
-            border-radius: 5px;
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 30px;
             cursor: pointer;
-            display: none;
+            box-shadow: 0 4px 0 #b45309;
+            margin-bottom: 20px;
+        }
+        .action-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #b45309;
+        }
+        .action-btn:disabled {
+            background-color: #555;
+            color: #999;
+            box-shadow: none;
+            transform: translateY(4px);
         }
 
-        button:hover { background-color: #666; }
+        .result-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 20px;
+            text-align: center;
+            min-height: 30px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Шахматы на фольге<br>против Крокодила</h1>
-    <div class="board" id="board"></div>
-    <div class="message" id="message">Твой ход! Двигайся конем (буквой Г).</div>
-    <button id="resetBtn" onclick="initGame()">Играть еще раз</button>
+    <!-- Шапка с балансом -->
+    <div class="header">
+        Баланс: <span class="balance" id="balance">1000</span> 🪙
+    </div>
+
+    <!-- Крокодил Крупье -->
+    <div class="croco-container">
+        <div class="croco-avatar">🐊</div>
+        <div class="croco-speech" id="croco-text">Добро пожаловать в мои болота! Делай ставки!</div>
+    </div>
+
+    <!-- ЭКРАН 1: МЕНЮ -->
+    <div class="screen active" id="menu-screen">
+        <h1 style="color: var(--accent); margin-bottom: 30px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);">Крокодильи Ставки</h1>
+        <button class="menu-btn" onclick="switchScreen('wheel-screen')">1. Колесо Фортуны</button>
+        <button class="menu-btn" onclick="switchScreen('slots-screen')">2. Однорукий Бандит</button>
+        <button class="menu-btn" onclick="switchScreen('cards-screen')">3. Угадай Масть</button>
+    </div>
+
+    <!-- ЭКРАН 2: КОЛЕСО -->
+    <div class="screen" id="wheel-screen">
+        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
+        <h2 style="margin-top: 40px;">Колесо Фортуны</h2>
+        <div class="result-text" id="wheel-result">Ставка: 100 🪙</div>
+        <div class="wheel-container">
+            <div class="wheel-pointer">▼</div>
+            <div class="wheel" id="wheel"></div>
+            <div class="wheel-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+        <button class="action-btn" id="spin-wheel-btn" onclick="spinWheel()">Крутить (100 🪙)</button>
+    </div>
+
+    <!-- ЭКРАН 3: СЛОТЫ -->
+    <div class="screen" id="slots-screen">
+        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
+        <h2 style="margin-top: 40px;">Однорукий Бандит</h2>
+        <div class="result-text" id="slots-result">Ставка: 100 🪙</div>
+        <div class="slots">
+            <div class="slot" id="slot1">🍒</div>
+            <div class="slot" id="slot2">🍒</div>
+            <div class="slot" id="slot3">🍒</div>
+        </div>
+        <button class="action-btn" id="spin-slots-btn" onclick="spinSlots()">Крутить (100 🪙)</button>
+    </div>
+
+    <!-- ЭКРАН 4: КАРТЫ -->
+    <div class="screen" id="cards-screen">
+        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
+        <h2 style="margin-top: 40px;">Угадай Масть</h2>
+        <div class="result-text" id="cards-result">Ставка: 100 🪙</div>
+        <div class="cards-grid">
+            <button class="card-btn red" onclick="playCards('♥')">♥</button>
+            <button class="card-btn black" onclick="playCards('♠')">♠</button>
+            <button class="card-btn red" onclick="playCards('♦')">♦</button>
+            <button class="card-btn black" onclick="playCards('♣')">♣</button>
+        </div>
+        <div class="result-text" id="cards-final"></div>
+    </div>
 
     <script>
-        const boardSize = 5;
-        let boardData = [];
-        let playerPos = { x: 0, y: 4 }; // Низ доски
-        let crocPos = { x: 4, y: 0 };   // Верх доски
-        let gameActive = true;
-        
-        const boardElement = document.getElementById('board');
-        const msgElement = document.getElementById('message');
-        const resetBtn = document.getElementById('resetBtn');
+        let balance = 1000;
+        const bet = 100;
+        const balanceEl = document.getElementById('balance');
+        const crocoText = document.getElementById('croco-text');
 
-        function initGame() {
-            boardData = Array(boardSize).fill(null).map(() => Array(boardSize).fill(null));
-            playerPos = { x: 0, y: 4 };
-            crocPos = { x: 4, y: 0 };
-            gameActive = true;
-            msgElement.textContent = "Твой ход! Двигайся конем (буквой Г).";
-            msgElement.style.color = "#ffcc00";
-            resetBtn.style.display = "none";
-            renderBoard();
-        }
-
-        function renderBoard() {
-            boardElement.innerHTML = '';
-            for (let y = 0; y < boardSize; y++) {
-                for (let x = 0; x < boardSize; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    // Шахматный паттерн для фольги
-                    if ((x + y) % 2 !== 0) cell.classList.add('dark');
-                    
-                    // Ставим фигуры
-                    if (x === playerPos.x && y === playerPos.y) {
-                        cell.innerHTML = '<span class="player">♘</span>';
-                    } else if (x === crocPos.x && y === crocPos.y) {
-                        cell.innerHTML = '<span class="crocodile">🐊</span>';
-                    }
-
-                    // Если игра активна, подсвечиваем возможные ходы коня
-                    if (gameActive && isValidKnightMove(playerPos.x, playerPos.y, x, y)) {
-                        cell.classList.add('valid-move');
-                    }
-
-                    cell.onclick = () => handleCellClick(x, y);
-                    boardElement.appendChild(cell);
-                }
+        // Смена экранов
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            // Сброс крокодила при переходе в меню
+            if (screenId === 'menu-screen') {
+                crocoTalk("Выбирай игру, не стесняйся. Мои зубы ждут твоих монет!");
             }
         }
 
-        // Проверка хода коня (буквой Г)
-        function isValidKnightMove(x1, y1, x2, y2) {
-            const dx = Math.abs(x1 - x2);
-            const dy = Math.abs(y1 - y2);
-            return (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
+        // Крокодил говорит
+        function crocoTalk(text) {
+            crocoText.style.opacity = 0;
+            setTimeout(() => {
+                crocoText.textContent = text;
+                crocoText.style.opacity = 1;
+            }, 200);
         }
 
-        function handleCellClick(x, y) {
-            if (!gameActive) return;
+        // Обновление баланса
+        function updateBalance(amount) {
+            balance += amount;
+            balanceEl.textContent = balance;
+            if (balance <= 0) {
+                setTimeout(() => {
+                    balance = 1000;
+                    updateBalance(0);
+                    crocoTalk("Ты всё проиграл! Вот тебе еще 1000 монет за счет заведения. Не подведи!");
+                }, 2000);
+            }
+        }
 
-            // Если кликнули на допустимый ход
-            if (isValidKnightMove(playerPos.x, playerPos.y, x, y)) {
-                playerPos.x = x;
-                playerPos.y = y;
+        // ИГРА 1: КОЛЕСО
+        let isSpinning = false;
+        function spinWheel() {
+            if (isSpinning) return;
+            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
+            
+            isSpinning = true;
+            updateBalance(-bet);
+            document.getElementById('spin-wheel-btn').disabled = true;
+            document.getElementById('wheel-result').textContent = "Крутим...";
+            crocoTalk("Крутись, колесо! Я хочу видеть твои слезы!");
+
+            const wheel = document.getElementById('wheel');
+            // Случайный угол от 3 до 8 полных оборотов + случайный сектор
+            const randomDeg = Math.floor(Math.random() * 360) + (360 * 5); 
+            wheel.style.transform = `rotate(${randomDeg}deg)`;
+
+            setTimeout(() => {
+                // Определяем, что выпало (симуляция для игрока)
+                const outcomes = [
+                    { text: "Ноль! х0", mult: 0 },
+                    { text: "Мелкая монета х1", mult: 1 },
+                    { text: "Неплохо х2", mult: 2 },
+                    { text: "Джекпот! х5", mult: 5 }
+                ];
                 
-                // Проверка: съели ли крокодила?
-                if (playerPos.x === crocPos.x && playerPos.y === crocPos.y) {
-                    gameActive = false;
-                    msgElement.textContent = "Ты сделал вилку и съел Крокодила! Победа! 🏆";
-                    msgElement.style.color = "#4CAF50";
-                    resetBtn.style.display = "block";
-                    renderBoard();
-                    return;
+                // Шансы: 40% - 0, 30% - 1, 20% - 2, 10% - 5
+                const rand = Math.random();
+                let result;
+                if (rand < 0.4) result = outcomes[0];
+                else if (rand < 0.7) result = outcomes[1];
+                else if (rand < 0.9) result = outcomes[2];
+                else result = outcomes[3];
+
+                const winAmount = bet * result.mult;
+                
+                document.getElementById('wheel-result').textContent = result.text;
+                
+                if (winAmount > 0) {
+                    updateBalance(winAmount);
+                    crocoTalk(`Повезло! Забирай ${winAmount} монет. Но я все равно их верну.`);
+                } else {
+                    crocoTalk("Ха-ха-ха! Ноль! Твои монеты ушли на дно болота!");
                 }
 
-                // Ход крокодила
-                msgElement.textContent = "Крокодил думает...";
-                renderBoard();
-                setTimeout(moveCrocodile, 500);
-            }
+                // Сбрасываем визуально колесо назад без анимации
+                setTimeout(() => {
+                    wheel.style.transition = 'none';
+                    wheel.style.transform = `rotate(0deg)`;
+                    setTimeout(() => wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.1, 1)', 50);
+                }, 1000);
+
+                isSpinning = false;
+                document.getElementById('spin-wheel-btn').disabled = false;
+            }, 4000); // Ждем окончания анимации
         }
 
-        function moveCrocodile() {
-            if (!gameActive) return;
+        // ИГРА 2: СЛОТЫ
+        let isSlotsSpinning = false;
+        const slotEmojis = ['🍒', '🍋', '🔔', '💎', '🐊'];
+        
+        function spinSlots() {
+            if (isSlotsSpinning) return;
+            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
 
-            // Крокодил ищет, куда пойти
-            const directions = [
-                {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
-                {x: 1, y: 1}, {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}
-            ];
+            isSlotsSpinning = true;
+            updateBalance(-bet);
+            document.getElementById('spin-slots-btn').disabled = true;
+            document.getElementById('slots-result').textContent = "Крутим...";
+            crocoTalk("Дергай за рычаг! Посмотрим, что ты поймаешь.");
 
-            let possibleMoves = [];
-            
-            for (let dir of directions) {
-                let nx = crocPos.x + dir.x;
-                let ny = crocPos.y + dir.y;
-                // Проверка границ
-                if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
-                    possibleMoves.push({x: nx, y: ny});
+            const s1 = document.getElementById('slot1');
+            const s2 = document.getElementById('slot2');
+            const s3 = document.getElementById('slot3');
+
+            // Анимация прокрутки
+            let count = 0;
+            const interval = setInterval(() => {
+                s1.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                s2.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                s3.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                count++;
+            }, 100);
+
+            // Остановка через 1.5 секунды
+            setTimeout(() => {
+                clearInterval(interval);
+                
+                // Выбираем конечный результат
+                // 20% шанс на выигрыш (три одинаковых)
+                let isWin = Math.random() < 0.2;
+                let finalEmoji;
+
+                if (isWin) {
+                    finalEmoji = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                    s1.textContent = finalEmoji;
+                    s2.textContent = finalEmoji;
+                    s3.textContent = finalEmoji;
+                    
+                    // Если выпал крокодил - джекпот х5
+                    let mult = finalEmoji === '🐊' ? 5 : 2;
+                    let winAmount = bet * mult;
+                    
+                    document.getElementById('slots-result').textContent = `Три в ряд! Выигрыш х${mult}`;
+                    updateBalance(winAmount);
+                    crocoTalk(finalEmoji === '🐊' ? "ТРИ КРОКОДИЛА! ДЖЕКПОТ! Забирай х5!" : "Неплохо! Забирай свой куш.");
+                } else {
+                    // Генерируем проигрышную комбинацию
+                    do {
+                        s1.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                        s2.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                        s3.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                    } while (s1.textContent === s2.textContent && s2.textContent === s3.textContent);
+
+                    document.getElementById('slots-result').textContent = "Мимо!";
+                    crocoTalk("Не судьба! В следующий раз повезет. Наверное.");
                 }
-            }
 
-            // Приоритет: если крокодил может съесть игрока - он это сделает
-            let eatMove = possibleMoves.find(m => m.x === playerPos.x && m.y === playerPos.y);
-            
-            if (eatMove) {
-                crocPos.x = eatMove.x;
-                crocPos.y = eatMove.y;
-                gameActive = false;
-                msgElement.textContent = "Крокодил тебя сожрал! Ты проиграл. 💀";
-                msgElement.style.color = "#d32f2f";
-                resetBtn.style.display = "block";
-            } else {
-                // Иначе делает случайный ход
-                let randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                crocPos.x = randomMove.x;
-                crocPos.y = randomMove.y;
-                msgElement.textContent = "Твой ход!";
-            }
-            
-            renderBoard();
+                isSlotsSpinning = false;
+                document.getElementById('spin-slots-btn').disabled = false;
+            }, 1500);
         }
 
-        // Запуск
-        initGame();
+        // ИГРА 3: КАРТЫ
+        let isPlayingCards = false;
+        function playCards(playerChoice) {
+            if (isPlayingCards) return;
+            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
+
+            isPlayingCards = true;
+            updateBalance(-bet);
+            
+            const resultEl = document.getElementById('cards-final');
+            resultEl.innerHTML = "Тянем карту...";
+            document.querySelectorAll('.card-btn').forEach(b => b.disabled = true);
+            crocoTalk("Загадал? Посмотрим, угадал ли ты мою масть.");
+
+            setTimeout(() => {
+                const suits = ['♥', '♠', '♦', '♣'];
+                const crocChoice = suits[Math.floor(Math.random() * suits.length)];
+                const isWin = playerChoice === crocChoice;
+
+                if (isWin) {
+                    resultEl.innerHTML = `Выпало: <span style="color:${['♥','♦'].includes(crocChoice)?'#ef4444':'#fff'}">${crocChoice}</span>! Ты угадал! х3`;
+                    updateBalance(bet * 3);
+                    crocoTalk("Как ты догадался?! Забирай х3. Но я слежу за тобой!");
+                } else {
+                    resultEl.innerHTML = `Выпало: <span style="color:${['♥','♦'].includes(crocChoice)?'#ef4444':'#fff'}">${crocChoice}</span>. Мимо.`;
+                    crocoTalk(`А я загадал ${crocChoice}! Твои денежки тю-тю!`);
+                }
+
+                isPlayingCards = false;
+                document.querySelectorAll('.card-btn').forEach(b => b.disabled = false);
+            }, 1000);
+        }
     </script>
 </body>
 </html>
