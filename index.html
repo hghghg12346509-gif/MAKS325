@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Шахматы на фольге против Крокодила</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            margin: 10px;
+            text-align: center;
+            color: #ccc;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* Доска из фольги */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            width: 90vw;
+            max-width: 400px;
+            height: 90vw;
+            max-height: 400px;
+            /* Имитация мятой фольги через градиенты */
+            background: 
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, transparent 2px, transparent 4px),
+                repeating-linear-gradient(-45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px),
+                radial-gradient(circle, #d4d4d4, #999);
+            border: 4px solid #777;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.5);
+            border-radius: 5px;
+        }
+
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        /* Клетки потемнее для шахматного вида */
+        .cell.dark {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Подсветка доступных ходов */
+        .cell.valid-move {
+            background-color: rgba(76, 175, 80, 0.5);
+            box-shadow: inset 0 0 15px #4CAF50;
+        }
+
+        .player { font-size: 1.2em; filter: drop-shadow(2px 2px 2px #000); color: white; }
+        .crocodile { font-size: 1.2em; filter: drop-shadow(2px 2px 2px #000); }
+
+        .message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            height: 30px;
+            text-align: center;
+            color: #ffcc00;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 1.1em;
+            background-color: #555;
+            color: white;
+            border: 1px solid #888;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+
+        button:hover { background-color: #666; }
+    </style>
+</head>
+<body>
+
+    <h1>Шахматы на фольге<br>против Крокодила</h1>
+    <div class="board" id="board"></div>
+    <div class="message" id="message">Твой ход! Двигайся конем (буквой Г).</div>
+    <button id="resetBtn" onclick="initGame()">Играть еще раз</button>
+
+    <script>
+        const boardSize = 5;
+        let boardData = [];
+        let playerPos = { x: 0, y: 4 }; // Низ доски
+        let crocPos = { x: 4, y: 0 };   // Верх доски
+        let gameActive = true;
+        
+        const boardElement = document.getElementById('board');
+        const msgElement = document.getElementById('message');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function initGame() {
+            boardData = Array(boardSize).fill(null).map(() => Array(boardSize).fill(null));
+            playerPos = { x: 0, y: 4 };
+            crocPos = { x: 4, y: 0 };
+            gameActive = true;
+            msgElement.textContent = "Твой ход! Двигайся конем (буквой Г).";
+            msgElement.style.color = "#ffcc00";
+            resetBtn.style.display = "none";
+            renderBoard();
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let y = 0; y < boardSize; y++) {
+                for (let x = 0; x < boardSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    // Шахматный паттерн для фольги
+                    if ((x + y) % 2 !== 0) cell.classList.add('dark');
+                    
+                    // Ставим фигуры
+                    if (x === playerPos.x && y === playerPos.y) {
+                        cell.innerHTML = '<span class="player">♘</span>';
+                    } else if (x === crocPos.x && y === crocPos.y) {
+                        cell.innerHTML = '<span class="crocodile">🐊</span>';
+                    }
+
+                    // Если игра активна, подсвечиваем возможные ходы коня
+                    if (gameActive && isValidKnightMove(playerPos.x, playerPos.y, x, y)) {
+                        cell.classList.add('valid-move');
+                    }
+
+                    cell.onclick = () => handleCellClick(x, y);
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Проверка хода коня (буквой Г)
+        function isValidKnightMove(x1, y1, x2, y2) {
+            const dx = Math.abs(x1 - x2);
+            const dy = Math.abs(y1 - y2);
+            return (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
+        }
+
+        function handleCellClick(x, y) {
+            if (!gameActive) return;
+
+            // Если кликнули на допустимый ход
+            if (isValidKnightMove(playerPos.x, playerPos.y, x, y)) {
+                playerPos.x = x;
+                playerPos.y = y;
+                
+                // Проверка: съели ли крокодила?
+                if (playerPos.x === crocPos.x && playerPos.y === crocPos.y) {
+                    gameActive = false;
+                    msgElement.textContent = "Ты сделал вилку и съел Крокодила! Победа! 🏆";
+                    msgElement.style.color = "#4CAF50";
+                    resetBtn.style.display = "block";
+                    renderBoard();
+                    return;
+                }
+
+                // Ход крокодила
+                msgElement.textContent = "Крокодил думает...";
+                renderBoard();
+                setTimeout(moveCrocodile, 500);
+            }
+        }
+
+        function moveCrocodile() {
+            if (!gameActive) return;
+
+            // Крокодил ищет, куда пойти
+            const directions = [
+                {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
+                {x: 1, y: 1}, {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}
+            ];
+
+            let possibleMoves = [];
+            
+            for (let dir of directions) {
+                let nx = crocPos.x + dir.x;
+                let ny = crocPos.y + dir.y;
+                // Проверка границ
+                if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+                    possibleMoves.push({x: nx, y: ny});
+                }
+            }
+
+            // Приоритет: если крокодил может съесть игрока - он это сделает
+            let eatMove = possibleMoves.find(m => m.x === playerPos.x && m.y === playerPos.y);
+            
+            if (eatMove) {
+                crocPos.x = eatMove.x;
+                crocPos.y = eatMove.y;
+                gameActive = false;
+                msgElement.textContent = "Крокодил тебя сожрал! Ты проиграл. 💀";
+                msgElement.style.color = "#d32f2f";
+                resetBtn.style.display = "block";
+            } else {
+                // Иначе делает случайный ход
+                let randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                crocPos.x = randomMove.x;
+                crocPos.y = randomMove.y;
+                msgElement.textContent = "Твой ход!";
+            }
+            
+            renderBoard();
+        }
+
+        // Запуск
+        initGame();
+    </script>
+</body>
+</html>
