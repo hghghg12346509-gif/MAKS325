@@ -2,518 +2,488 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Крокодильи Ставки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sniper: Room Clear</title>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent: #fbbf24;
-            --text: #f8fafc;
-        }
         body {
             margin: 0;
             padding: 0;
-            height: 100vh;
-            background-color: var(--bg-color);
-            color: var(--text);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background-color: #000;
             overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            cursor: none; /* Скрываем обычный курсор */
             user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .header {
-            width: 100%;
-            text-align: center;
-            padding: 15px 0;
-            font-size: 1.2em;
-            font-weight: bold;
-            background-color: rgba(0,0,0,0.3);
-            border-bottom: 2px solid var(--accent);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        .balance { color: var(--accent); font-size: 1.3em; }
-        
-        /* Экраны */
-        .screen {
-            display: none;
-            width: 100%;
-            height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .screen.active { display: flex; }
-
-        /* Меню */
-        .menu-btn {
-            width: 80%;
-            max-width: 300px;
-            padding: 20px;
-            margin: 10px 0;
-            background-color: var(--card-bg);
-            border: 2px solid var(--accent);
-            color: var(--text);
-            font-size: 1.2em;
-            font-weight: bold;
-            border-radius: 15px;
-            cursor: pointer;
-            box-shadow: 0 5px 0 #b45309;
-            transition: transform 0.1s, box-shadow 0.1s;
-            text-align: center;
-        }
-        .menu-btn:active {
-            transform: translateY(5px);
-            box-shadow: 0 0 0 #b45309;
         }
 
-        /* Крокодил */
-        .croco-container {
+        /* Комната (фон) */
+        #room {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            align-items: flex-end;
-            z-index: 100;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-color: #1a1a1a;
+            background-image: 
+                linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222),
+                linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222);
+            background-size: 100px 100px;
+            background-position: 0 0, 50px 50px;
+            overflow: hidden;
+        }
+
+        /* Мебель и укрытия (для атмосферы) */
+        .prop {
+            position: absolute;
+            font-size: 80px;
+            opacity: 0.7;
+            pointer-events: none; /* Не мешают кликам */
+            filter: drop-shadow(0 0 10px #000);
+        }
+
+        /* Враги */
+        .enemy {
+            position: absolute;
+            font-size: 50px;
+            cursor: crosshair;
+            transition: transform 0.1s;
+            z-index: 10;
+        }
+        .enemy:active { transform: scale(0.8); }
+
+        /* Кровь */
+        .blood {
+            position: absolute;
+            color: #ff0000;
+            font-size: 60px;
             pointer-events: none;
+            animation: splatter 1s ease-out forwards;
+            z-index: 20;
         }
-        .croco-avatar {
-            font-size: 4em;
-            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
-            animation: float 3s ease-in-out infinite;
+        @keyframes splatter {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2) translateY(20px); opacity: 0; }
         }
-        .croco-speech {
-            background: white;
-            color: black;
-            padding: 10px 15px;
-            border-radius: 20px 20px 20px 0;
-            font-size: 0.9em;
-            font-weight: bold;
-            margin-left: 10px;
-            margin-bottom: 20px;
-            max-width: 200px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            position: relative;
-            transition: opacity 0.3s;
+
+        /* --- ПРИЦЕЛ --- */
+        #scope {
+            position: absolute;
+            width: 60vh; /* Размер прицела */
+            height: 60vh;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 0, 0, 0.6);
+            /* Магия туннельного зрения: огромная тень закрывает всё остальное */
+            box-shadow: 0 0 0 100vw rgba(0, 0, 0, 0.95), inset 0 0 50px rgba(0, 0, 0, 0.8);
+            pointer-events: none; /* Клики проходят сквозь прицел на врагов */
+            z-index: 100;
+            transform: translate(-50%, -50%); /* Центрируем по мышке */
         }
-        .croco-speech::after {
+
+        /* Перекрестие внутри прицела */
+        #scope::before, #scope::after {
             content: '';
             position: absolute;
-            left: -10px;
-            bottom: 0;
-            width: 0;
-            height: 0;
-            border: 10px solid transparent;
-            border-right-color: white;
-            border-bottom: 0;
+            background: rgba(255, 0, 0, 0.6);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
         }
+        #scope::before { width: 100%; height: 2px; } /* Горизонталь */
+        #scope::after { width: 2px; height: 100%; } /* Вертикаль */
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        /* Кнопка назад */
-        .back-btn {
+        /* Точка в центре */
+        #crosshair-dot {
             position: absolute;
-            top: 60px;
+            width: 6px; height: 6px;
+            background: #ff0000;
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        /* --- ИНТЕРФЕЙС --- */
+        #ui {
+            position: fixed;
+            bottom: 20px;
             left: 20px;
-            background: none;
-            border: none;
-            color: var(--accent);
-            font-size: 1.5em;
-            cursor: pointer;
-            padding: 10px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 200;
+            pointer-events: none;
+            color: #fff;
+            text-shadow: 0 0 5px #000;
         }
 
-        /* Игра 1: Колесо */
-        .wheel-container {
-            position: relative;
-            width: 300px;
-            height: 300px;
-            margin-bottom: 30px;
-        }
-        .wheel-pointer {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 2.5em;
-            color: #ef4444;
-            z-index: 10;
-            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
-        }
-        .wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 8px solid var(--accent);
-            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(0,0,0,0.8);
-            background: conic-gradient(
-                #ef4444 0deg 45deg, 
-                #3b82f6 45deg 90deg, 
-                #10b981 90deg 135deg, 
-                #f59e0b 135deg 180deg,
-                #8b5cf6 180deg 225deg,
-                #ec4899 225deg 270deg,
-                #06b6d4 270deg 315deg,
-                #84cc16 315deg 360deg
-            );
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.1, 1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .wheel-center {
-            width: 60px;
-            height: 60px;
-            background: var(--bg-color);
-            border-radius: 50%;
-            border: 4px solid var(--accent);
-            z-index: 5;
-        }
-
-        /* Игра 2: Слоты */
-        .slots {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            background: #000;
-            padding: 20px;
-            border-radius: 15px;
-            border: 3px solid var(--accent);
-        }
-        .slot {
-            width: 70px;
-            height: 90px;
-            background: white;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 3em;
-            overflow: hidden;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        /* Игра 3: Карты */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        .card-btn {
-            width: 100px;
-            height: 140px;
-            background: white;
-            border-radius: 10px;
-            border: none;
-            font-size: 3em;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: transform 0.1s;
-        }
-        .card-btn:active { transform: scale(0.95); }
-        .card-btn.red { color: #ef4444; }
-        .card-btn.black { color: #000; }
-
-        /* Общие кнопки действий */
-        .action-btn {
-            padding: 15px 40px;
-            font-size: 1.2em;
+        .ui-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            font-size: 20px;
             font-weight: bold;
-            background-color: var(--accent);
-            color: #000;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 4px 0 #b45309;
-            margin-bottom: 20px;
-        }
-        .action-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 0 #b45309;
-        }
-        .action-btn:disabled {
-            background-color: #555;
-            color: #999;
-            box-shadow: none;
-            transform: translateY(4px);
         }
 
-        .result-text {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: var(--accent);
-            margin-bottom: 20px;
+        .ammo-box { color: #ffcc00; }
+        .ammo-box.empty { color: #ff0000; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        .score-box { color: #00ff00; }
+
+        /* ЭКРАНЫ СТАРТА И КОНЦА */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            color: #fff;
+            cursor: default;
             text-align: center;
-            min-height: 30px;
+        }
+
+        h1 {
+            color: #ff3333;
+            font-size: 50px;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 20px #ff3333;
+            text-transform: uppercase;
+        }
+
+        p { font-size: 20px; margin-bottom: 30px; color: #ccc; }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            background: #333;
+            border: 2px solid #ff3333;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+        }
+        .btn:hover { background: #ff3333; box-shadow: 0 0 30px #ff3333; }
+
+        /* Эффект вспышки при выстреле */
+        #muzzle-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            z-index: 150;
+            opacity: 0;
         }
     </style>
 </head>
 <body>
 
-    <!-- Шапка с балансом -->
-    <div class="header">
-        Баланс: <span class="balance" id="balance">1000</span> 🪙
+    <!-- Комната -->
+    <div id="room">
+        <!-- Мебель -->
+        <div class="prop" style="top: 10%; left: 5%;">🛋️</div>
+        <div class="prop" style="top: 60%; left: 15%;">📦</div>
+        <div class="prop" style="top: 20%; right: 10%;">🪴</div>
+        <div class="prop" style="bottom: 10%; right: 5%;">🗄️</div>
+        <div class="prop" style="top: 40%; left: 45%;">🖼️</div>
     </div>
 
-    <!-- Крокодил Крупье -->
-    <div class="croco-container">
-        <div class="croco-avatar">🐊</div>
-        <div class="croco-speech" id="croco-text">Добро пожаловать в мои болота! Делай ставки!</div>
+    <!-- Прицел -->
+    <div id="scope">
+        <div id="crosshair-dot"></div>
     </div>
 
-    <!-- ЭКРАН 1: МЕНЮ -->
-    <div class="screen active" id="menu-screen">
-        <h1 style="color: var(--accent); margin-bottom: 30px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);">Крокодильи Ставки</h1>
-        <button class="menu-btn" onclick="switchScreen('wheel-screen')">1. Колесо Фортуны</button>
-        <button class="menu-btn" onclick="switchScreen('slots-screen')">2. Однорукий Бандит</button>
-        <button class="menu-btn" onclick="switchScreen('cards-screen')">3. Угадай Масть</button>
+    <!-- Вспышка -->
+    <div id="muzzle-flash"></div>
+
+    <!-- Интерфейс -->
+    <div id="ui">
+        <div class="ui-box ammo-box" id="ammo-display">🔫 Патроны: 5 / 5</div>
+        <div class="ui-box score-box" id="score-display">🎯 Убито: 0 / 10</div>
     </div>
 
-    <!-- ЭКРАН 2: КОЛЕСО -->
-    <div class="screen" id="wheel-screen">
-        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
-        <h2 style="margin-top: 40px;">Колесо Фортуны</h2>
-        <div class="result-text" id="wheel-result">Ставка: 100 🪙</div>
-        <div class="wheel-container">
-            <div class="wheel-pointer">▼</div>
-            <div class="wheel" id="wheel"></div>
-            <div class="wheel-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
-        </div>
-        <button class="action-btn" id="spin-wheel-btn" onclick="spinWheel()">Крутить (100 🪙)</button>
-    </div>
-
-    <!-- ЭКРАН 3: СЛОТЫ -->
-    <div class="screen" id="slots-screen">
-        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
-        <h2 style="margin-top: 40px;">Однорукий Бандит</h2>
-        <div class="result-text" id="slots-result">Ставка: 100 🪙</div>
-        <div class="slots">
-            <div class="slot" id="slot1">🍒</div>
-            <div class="slot" id="slot2">🍒</div>
-            <div class="slot" id="slot3">🍒</div>
-        </div>
-        <button class="action-btn" id="spin-slots-btn" onclick="spinSlots()">Крутить (100 🪙)</button>
-    </div>
-
-    <!-- ЭКРАН 4: КАРТЫ -->
-    <div class="screen" id="cards-screen">
-        <button class="back-btn" onclick="switchScreen('menu-screen')">← Назад</button>
-        <h2 style="margin-top: 40px;">Угадай Масть</h2>
-        <div class="result-text" id="cards-result">Ставка: 100 🪙</div>
-        <div class="cards-grid">
-            <button class="card-btn red" onclick="playCards('♥')">♥</button>
-            <button class="card-btn black" onclick="playCards('♠')">♠</button>
-            <button class="card-btn red" onclick="playCards('♦')">♦</button>
-            <button class="card-btn black" onclick="playCards('♣')">♣</button>
-        </div>
-        <div class="result-text" id="cards-final"></div>
+    <!-- Экран старта/конца -->
+    <div id="overlay">
+        <h1 id="overlay-title">Снайпер: Зачистка</h1>
+        <p id="overlay-text">Найди и уничтожь 10 целей в комнате.<br>Стреляй кликом мыши. Перезарядка — клавиша R.</p>
+        <button class="btn" id="start-btn" onclick="startGame()">Начать миссию</button>
     </div>
 
     <script>
-        let balance = 1000;
-        const bet = 100;
-        const balanceEl = document.getElementById('balance');
-        const crocoText = document.getElementById('croco-text');
+        // --- ЗВУКОВОЙ ДВИЖОК ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
 
-        // Смена экранов
-        function switchScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            
-            // Сброс крокодила при переходе в меню
-            if (screenId === 'menu-screen') {
-                crocoTalk("Выбирай игру, не стесняйся. Мои зубы ждут твоих монет!");
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'shot') {
+                // Резкий выстрел
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'reload') {
+                // Звук перезарядки (два щелчка)
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, now);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+                
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator(); const gain2 = audioCtx.createGain();
+                    osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                    osc2.type = 'triangle'; osc2.frequency.setValueAtTime(600, now + 0.2);
+                    gain2.gain.setValueAtTime(0.2, now + 0.2); gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc2.start(now + 0.2); osc2.stop(now + 0.3);
+                }, 200);
+            } else if (type === 'hit') {
+                // Звук попадания (глухой удар)
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'empty') {
+                // Звук пустого магазина
+                osc.type = 'square'; osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
             }
         }
 
-        // Крокодил говорит
-        function crocoTalk(text) {
-            crocoText.style.opacity = 0;
-            setTimeout(() => {
-                crocoText.textContent = text;
-                crocoText.style.opacity = 1;
-            }, 200);
-        }
+        // --- ИГРОВАЯ ЛОГИКА ---
+        const scope = document.getElementById('scope');
+        const room = document.getElementById('room');
+        const ammoDisplay = document.getElementById('ammo-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const overlay = document.getElementById('overlay');
+        const muzzleFlash = document.getElementById('muzzle-flash');
 
-        // Обновление баланса
-        function updateBalance(amount) {
-            balance += amount;
-            balanceEl.textContent = balance;
-            if (balance <= 0) {
-                setTimeout(() => {
-                    balance = 1000;
-                    updateBalance(0);
-                    crocoTalk("Ты всё проиграл! Вот тебе еще 1000 монет за счет заведения. Не подведи!");
-                }, 2000);
-            }
-        }
-
-        // ИГРА 1: КОЛЕСО
-        let isSpinning = false;
-        function spinWheel() {
-            if (isSpinning) return;
-            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
-            
-            isSpinning = true;
-            updateBalance(-bet);
-            document.getElementById('spin-wheel-btn').disabled = true;
-            document.getElementById('wheel-result').textContent = "Крутим...";
-            crocoTalk("Крутись, колесо! Я хочу видеть твои слезы!");
-
-            const wheel = document.getElementById('wheel');
-            // Случайный угол от 3 до 8 полных оборотов + случайный сектор
-            const randomDeg = Math.floor(Math.random() * 360) + (360 * 5); 
-            wheel.style.transform = `rotate(${randomDeg}deg)`;
-
-            setTimeout(() => {
-                // Определяем, что выпало (симуляция для игрока)
-                const outcomes = [
-                    { text: "Ноль! х0", mult: 0 },
-                    { text: "Мелкая монета х1", mult: 1 },
-                    { text: "Неплохо х2", mult: 2 },
-                    { text: "Джекпот! х5", mult: 5 }
-                ];
-                
-                // Шансы: 40% - 0, 30% - 1, 20% - 2, 10% - 5
-                const rand = Math.random();
-                let result;
-                if (rand < 0.4) result = outcomes[0];
-                else if (rand < 0.7) result = outcomes[1];
-                else if (rand < 0.9) result = outcomes[2];
-                else result = outcomes[3];
-
-                const winAmount = bet * result.mult;
-                
-                document.getElementById('wheel-result').textContent = result.text;
-                
-                if (winAmount > 0) {
-                    updateBalance(winAmount);
-                    crocoTalk(`Повезло! Забирай ${winAmount} монет. Но я все равно их верну.`);
-                } else {
-                    crocoTalk("Ха-ха-ха! Ноль! Твои монеты ушли на дно болота!");
-                }
-
-                // Сбрасываем визуально колесо назад без анимации
-                setTimeout(() => {
-                    wheel.style.transition = 'none';
-                    wheel.style.transform = `rotate(0deg)`;
-                    setTimeout(() => wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.1, 1)', 50);
-                }, 1000);
-
-                isSpinning = false;
-                document.getElementById('spin-wheel-btn').disabled = false;
-            }, 4000); // Ждем окончания анимации
-        }
-
-        // ИГРА 2: СЛОТЫ
-        let isSlotsSpinning = false;
-        const slotEmojis = ['🍒', '🍋', '🔔', '💎', '🐊'];
+        let isPlaying = false;
+        let maxAmmo = 5;
+        let currentAmmo = 5;
+        let kills = 0;
+        let targetKills = 10;
+        let isReloading = false;
         
-        function spinSlots() {
-            if (isSlotsSpinning) return;
-            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
+        let spawnTimeout;
+        let hideTimeout;
+        let enemies = [];
 
-            isSlotsSpinning = true;
-            updateBalance(-bet);
-            document.getElementById('spin-slots-btn').disabled = true;
-            document.getElementById('slots-result').textContent = "Крутим...";
-            crocoTalk("Дергай за рычаг! Посмотрим, что ты поймаешь.");
+        // Враги (разные персонажи)
+        const enemyTypes = ['🤠', '🕵️', '🥷', '🧟', '👤', '🎯'];
+        
+        // Движение прицела за мышкой
+        window.addEventListener('mousemove', (e) => {
+            if (!isPlaying) return;
+            scope.style.left = e.clientX + 'px';
+            scope.style.top = e.clientY + 'px';
+        });
 
-            const s1 = document.getElementById('slot1');
-            const s2 = document.getElementById('slot2');
-            const s3 = document.getElementById('slot3');
+        // Выстрел
+        window.addEventListener('mousedown', (e) => {
+            if (!isPlaying) return;
+            
+            // Если кликнули по кнопке интерфейса - игнорируем выстрел
+            if (e.target.tagName === 'BUTTON') return;
 
-            // Анимация прокрутки
-            let count = 0;
-            const interval = setInterval(() => {
-                s1.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                s2.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                s3.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                count++;
-            }, 100);
+            shoot(e.clientX, e.clientY);
+        });
 
-            // Остановка через 1.5 секунды
-            setTimeout(() => {
-                clearInterval(interval);
-                
-                // Выбираем конечный результат
-                // 20% шанс на выигрыш (три одинаковых)
-                let isWin = Math.random() < 0.2;
-                let finalEmoji;
+        // Перезарядка на клавишу R
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r' && isPlaying) {
+                reload();
+            }
+        });
 
-                if (isWin) {
-                    finalEmoji = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                    s1.textContent = finalEmoji;
-                    s2.textContent = finalEmoji;
-                    s3.textContent = finalEmoji;
-                    
-                    // Если выпал крокодил - джекпот х5
-                    let mult = finalEmoji === '🐊' ? 5 : 2;
-                    let winAmount = bet * mult;
-                    
-                    document.getElementById('slots-result').textContent = `Три в ряд! Выигрыш х${mult}`;
-                    updateBalance(winAmount);
-                    crocoTalk(finalEmoji === '🐊' ? "ТРИ КРОКОДИЛА! ДЖЕКПОТ! Забирай х5!" : "Неплохо! Забирай свой куш.");
-                } else {
-                    // Генерируем проигрышную комбинацию
-                    do {
-                        s1.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                        s2.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                        s3.textContent = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
-                    } while (s1.textContent === s2.textContent && s2.textContent === s3.textContent);
-
-                    document.getElementById('slots-result').textContent = "Мимо!";
-                    crocoTalk("Не судьба! В следующий раз повезет. Наверное.");
-                }
-
-                isSlotsSpinning = false;
-                document.getElementById('spin-slots-btn').disabled = false;
-            }, 1500);
+        function startGame() {
+            initAudio();
+            overlay.style.display = 'none';
+            isPlaying = true;
+            kills = 0;
+            currentAmmo = maxAmmo;
+            isReloading = false;
+            
+            // Очистка комнаты от старых врагов/крови
+            document.querySelectorAll('.enemy').forEach(el => el.remove());
+            document.querySelectorAll('.blood').forEach(el => el.remove());
+            enemies = [];
+            
+            updateUI();
+            spawnEnemy(); // Запуск спавна
         }
 
-        // ИГРА 3: КАРТЫ
-        let isPlayingCards = false;
-        function playCards(playerChoice) {
-            if (isPlayingCards) return;
-            if (balance < bet) return crocoTalk("Эй, у тебя нет денег!");
-
-            isPlayingCards = true;
-            updateBalance(-bet);
+        function updateUI() {
+            ammoDisplay.textContent = `🔫 Патроны: ${currentAmmo} / ${maxAmmo}`;
+            if (currentAmmo === 0) ammoDisplay.classList.add('empty');
+            else ammoDisplay.classList.remove('empty');
             
-            const resultEl = document.getElementById('cards-final');
-            resultEl.innerHTML = "Тянем карту...";
-            document.querySelectorAll('.card-btn').forEach(b => b.disabled = true);
-            crocoTalk("Загадал? Посмотрим, угадал ли ты мою масть.");
+            scoreDisplay.textContent = `🎯 Убито: ${kills} / ${targetKills}`;
+        }
 
+        function reload() {
+            if (isReloading || currentAmmo === maxAmmo || !isPlaying) return;
+            isReloading = true;
+            playSound('reload');
+            ammoDisplay.textContent = '🔄 Перезарядка...';
+            
             setTimeout(() => {
-                const suits = ['♥', '♠', '♦', '♣'];
-                const crocChoice = suits[Math.floor(Math.random() * suits.length)];
-                const isWin = playerChoice === crocChoice;
+                currentAmmo = maxAmmo;
+                isReloading = false;
+                updateUI();
+            }, 1000); // 1 секунда на перезарядку
+        }
 
-                if (isWin) {
-                    resultEl.innerHTML = `Выпало: <span style="color:${['♥','♦'].includes(crocChoice)?'#ef4444':'#fff'}">${crocChoice}</span>! Ты угадал! х3`;
-                    updateBalance(bet * 3);
-                    crocoTalk("Как ты догадался?! Забирай х3. Но я слежу за тобой!");
-                } else {
-                    resultEl.innerHTML = `Выпало: <span style="color:${['♥','♦'].includes(crocChoice)?'#ef4444':'#fff'}">${crocChoice}</span>. Мимо.`;
-                    crocoTalk(`А я загадал ${crocChoice}! Твои денежки тю-тю!`);
-                }
+        function shoot(x, y) {
+            if (isReloading) return;
+            
+            if (currentAmmo <= 0) {
+                playSound('empty');
+                return;
+            }
 
-                isPlayingCards = false;
-                document.querySelectorAll('.card-btn').forEach(b => b.disabled = false);
-            }, 1000);
+            // Тратим патрон
+            currentAmmo--;
+            updateUI();
+            playSound('shot');
+            
+            // Вспышка
+            muzzleFlash.style.opacity = '1';
+            setTimeout(() => muzzleFlash.style.opacity = '0', 50);
+
+            // Проверка попадания
+            // elementFromPoint вернет элемент, который находится под курсором
+            // Временно скрываем прицел, чтобы он не перекрывал клик
+            scope.style.display = 'none'; 
+            const hitElement = document.elementFromPoint(x, y);
+            scope.style.display = 'block';
+
+            if (hitElement && hitElement.classList.contains('enemy')) {
+                // ПОПАДАНИЕ
+                killEnemy(hitElement);
+            } else {
+                // ПРОМАХ (оставляем дырку от пули)
+                createBulletHole(x, y);
+            }
+
+            // Если патроны кончились, автоматически перезаряжаем через 1 секунду
+            if (currentAmmo === 0 && kills < targetKills) {
+                setTimeout(reload, 500);
+            }
+        }
+
+        function killEnemy(enemy) {
+            playSound('hit');
+            kills++;
+            updateUI();
+
+            // Кровь на месте врага
+            const blood = document.createElement('div');
+            blood.classList.add('blood');
+            blood.textContent = '🩸';
+            blood.style.left = enemy.style.left;
+            blood.style.top = enemy.style.top;
+            room.appendChild(blood);
+            
+            setTimeout(() => blood.remove(), 1000);
+
+            // Удаляем врага
+            enemy.remove();
+            enemies = enemies.filter(e => e !== enemy);
+
+            // Проверка победы
+            if (kills >= targetKills) {
+                winGame();
+            }
+        }
+
+        function createBulletHole(x, y) {
+            const hole = document.createElement('div');
+            hole.style.position = 'absolute';
+            hole.style.left = x + 'px';
+            hole.style.top = y + 'px';
+            hole.style.width = '6px';
+            hole.style.height = '6px';
+            hole.style.background = '#000';
+            hole.style.borderRadius = '50%';
+            hole.style.border = '2px solid #555';
+            hole.style.transform = 'translate(-50%, -50%)';
+            hole.style.pointerEvents = 'none';
+            hole.style.zIndex = 5;
+            room.appendChild(hole);
+        }
+
+        // Спавн врагов (Прятки)
+        function spawnEnemy() {
+            if (!isPlaying || kills >= targetKills) return;
+
+            // Не спавним слишком много врагов одновременно
+            if (enemies.length < 3) {
+                const enemy = document.createElement('div');
+                enemy.classList.add('enemy');
+                enemy.textContent = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                
+                // Случайная позиция (но не по краям экрана, чтобы не обрезались)
+                const x = Math.random() * 80 + 10; // от 10% до 90%
+                const y = Math.random() * 80 + 10;
+                
+                enemy.style.left = x + 'vw';
+                enemy.style.top = y + 'vh';
+                
+                // Анимация появления
+                enemy.animate([
+                    { transform: 'scale(0)' },
+                    { transform: 'scale(1)' }
+                ], { duration: 300 });
+
+                room.appendChild(enemy);
+                enemies.push(enemy);
+
+                // Логика пряток: враг исчезает через некоторое время
+                // Чем больше убито, тем меньше времени они показываются
+                const showTime = Math.max(1000, 3000 - (kills * 150)); 
+                
+                setTimeout(() => {
+                    if (enemy.parentNode) {
+                        enemy.remove();
+                        enemies = enemies.filter(e => e !== enemy);
+                    }
+                }, showTime);
+            }
+
+            // Планируем следующий спавн
+            const nextSpawnDelay = Math.max(600, 1500 - (kills * 80));
+            spawnTimeout = setTimeout(spawnEnemy, nextSpawnDelay);
+        }
+
+        function winGame() {
+            isPlaying = false;
+            clearTimeout(spawnTimeout);
+            
+            overlay.style.display = 'flex';
+            document.getElementById('overlay-title').textContent = "Миссия выполнена!";
+            document.getElementById('overlay-title').style.color = "#00ff00";
+            document.getElementById('overlay-title').style.textShadow = "0 0 20px #00ff00";
+            document.getElementById('overlay-text').innerHTML = "Все цели уничтожены. Ты настоящий снайпер!";
+            
+            const btn = document.getElementById('start-btn');
+            btn.textContent = "Играть снова";
+            btn.style.borderColor = "#00ff00";
+            btn.style.boxShadow = "0 0 15px rgba(0, 255, 0, 0.3)";
         }
     </script>
 </body>
