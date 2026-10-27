@@ -3,154 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Dash - Mobile Runner</title>
+    <title>Minecraft Кузнец Симулятор</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #050510;
-            overflow: hidden;
-            font-family: 'Courier New', Courier, monospace;
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg: #2b2b2b;
+            --dirt: #8b5a2b;
+            --stone: #7f8c8d;
+            --wood: #5c4033;
+            --gold: #ffd700;
+            --text: #fff;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Press Start 2P', monospace;
             user-select: none;
-            touch-action: manipulation; /* Отключаем зум по двойному тапу */
+            -webkit-tap-highlight-color: transparent;
         }
 
-        canvas {
-            display: block;
-        }
-
-        /* Интерфейс */
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg);
+            background-image: 
+                repeating-linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a), 
+                repeating-linear-gradient(45deg, #1a1a1a 25%, #222 25%, #222 75%, #1a1a1a 75%, #1a1a1a);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            color: var(--text);
+            height: 100vh;
             display: flex;
-            justify-content: space-between;
-            color: #0ff;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #0ff;
-            pointer-events: none;
-            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
         }
 
-        #best-score {
-            color: #ff00ff;
-            text-shadow: 0 0 10px #ff00ff;
-            font-size: 18px;
+        /* ШАПКА (Ресурсы) */
+        #top-bar {
+            width: 100%; height: 60px;
+            background: #111; border-bottom: 4px solid #000;
+            display: flex; justify-content: space-around; align-items: center;
+            font-size: 12px; z-index: 10;
+        }
+        .resource { display: flex; align-items: center; gap: 5px; }
+        .resource span { color: var(--gold); font-size: 14px; }
+
+        /* ИГРОВОЕ ПОЛЕ */
+        #game-board {
+            flex: 1;
+            width: 100%;
+            max-width: 600px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 5px;
+            padding: 5px;
+            background: #3e2723;
+            position: relative;
         }
 
-        /* Экраны старта и конца */
-        .overlay {
+        /* Кузнечик на фоне */
+        #grasshopper {
             position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(5, 5, 16, 0.85);
+            bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 60px;
+            z-index: 1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* Станции */
+        .station {
+            background: var(--wood);
+            border: 4px solid #000;
+            border-top-color: #7a5443;
+            border-left-color: #7a5443;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 100;
-            color: #fff;
-            text-align: center;
-        }
-
-        .hidden { display: none !important; }
-
-        h1 {
-            font-size: 40px;
-            color: #0ff;
-            text-shadow: 0 0 20px #0ff;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        h2 {
-            font-size: 30px;
-            color: #ff0055;
-            text-shadow: 0 0 20px #ff0055;
-            margin-bottom: 20px;
-        }
-
-        p {
-            font-size: 18px;
-            color: #aaa;
-            margin-bottom: 40px;
-            line-height: 1.5;
-            padding: 0 20px;
-        }
-
-        .btn {
-            padding: 15px 40px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #050510;
-            background: #0ff;
-            border: none;
-            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
             cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 0 20px #0ff;
             transition: transform 0.1s;
         }
-        .btn:active { transform: scale(0.95); }
+        .station:active { transform: scale(0.95); }
+        
+        .station-icon { font-size: 50px; z-index: 2; filter: drop-shadow(2px 2px 0 #000); }
+        .station-name { font-size: 8px; margin-top: 10px; background: rgba(0,0,0,0.7); padding: 4px; z-index: 2; }
 
-        /* Анимация пульсации для старта */
-        .pulse {
-            animation: pulseAnim 1.5s infinite;
+        /* Визуальные эффекты */
+        .particle {
+            position: absolute; font-size: 20px; pointer-events: none;
+            animation: pop 0.5s forwards; z-index: 5;
         }
-        @keyframes pulseAnim {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); box-shadow: 0 0 30px #0ff; }
-            100% { transform: scale(1); }
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        /* Эффект горения печи */
+        .burning { background: #ff5722 !important; box-shadow: inset 0 0 30px #ff0000; }
+        
+        /* Трещины на камне */
+        .cracked { animation: shake 0.2s; filter: brightness(0.7); }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }
+
+        /* Индикаторы прогресса (стрелочки) */
+        .action-hint {
+            position: absolute; top: 10px; right: 10px;
+            font-size: 20px; animation: bounceHint 1s infinite alternate;
+        }
+        @keyframes bounceHint { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+        .hidden { display: none !important; }
+
+        /* МАГАЗИН УЛУЧШЕНИЙ */
+        #shop {
+            width: 100%;
+            background: #222;
+            border-top: 4px solid #000;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+        }
+        .upg-btn {
+            background: var(--stone);
+            border: 3px solid #000;
+            padding: 8px;
+            min-width: 120px;
+            text-align: center;
+            font-size: 8px;
+            color: #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .upg-btn:active { transform: scale(0.95); }
+        .upg-btn span { color: var(--gold); display: block; margin-top: 5px; font-size: 10px; }
+        
+        /* Сообщение от кузнечика */
+        #gh-speech {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.9); border: 2px solid #4caf50; padding: 10px;
+            font-size: 8px; color: #4caf50; z-index: 20; text-align: center; width: 80%; max-width: 400px;
+            pointer-events: none; transition: opacity 0.3s;
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <div id="score">0</div>
-        <div id="best-score">РЕКОРД: 0</div>
+    <!-- Ресурсы -->
+    <div id="top-bar">
+        <div class="resource">🪨 <span id="ui-ore">0</span></div>
+        <div class="resource">🟨 <span id="ui-ingot">0</span></div>
+        <div class="resource">⚔️ <span id="ui-sword">0</span></div>
+        <div class="resource">🪙 <span id="ui-coin">0</span></div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- Подсказка кузнечика -->
+    <div id="gh-speech">Привет! Начни копать руду (🪨)!</div>
 
-    <!-- Экран Старта -->
-    <div id="start-screen" class="overlay">
-        <h1>Neon Dash</h1>
-        <p>Нажимай на экран, чтобы прыгать.<br>Уворачивайся от красных шипов!</p>
-        <button class="btn pulse" onclick="startGame()">Играть</button>
+    <!-- Игровое поле -->
+    <div id="game-board">
+        <div id="grasshopper">🦗</div>
+
+        <!-- 1. РУДНИК -->
+        <div class="station" id="st-mine" onclick="mineOre()">
+            <div class="station-icon" id="icon-mine">🪨</div>
+            <div class="station-name">ШАХТА</div>
+            <div class="action-hint" id="hint-mine">⛏️</div>
+        </div>
+
+        <!-- 2. ПЕЧЬ -->
+        <div class="station" id="st-furnace" onclick="smeltOre()">
+            <div class="station-icon" id="icon-furnace">🔥</div>
+            <div class="station-name">ПЕЧЬ</div>
+            <div class="action-hint hidden" id="hint-furnace">🪨</div>
+        </div>
+
+        <!-- 3. НАКОВАЛЬНЯ -->
+        <div class="station" id="st-anvil" onclick="forgeSword()">
+            <div class="station-icon" id="icon-anvil">⚒️</div>
+            <div class="station-name">НАКОВАЛЬНЯ</div>
+            <div class="action-hint hidden" id="hint-anvil">🟨</div>
+        </div>
+
+        <!-- 4. ПРОДАЖА -->
+        <div class="station" id="st-shop" onclick="sellSword()">
+            <div class="station-icon" id="icon-shop">🏪</div>
+            <div class="station-name">ПРОДАЖА</div>
+            <div class="action-hint hidden" id="hint-shop">⚔️</div>
+        </div>
     </div>
 
-    <!-- Экран Проигрыша -->
-    <div id="game-over-screen" class="overlay hidden">
-        <h2>ИГРА ОКОНЧЕНА</h2>
-        <p>Твой счёт: <span id="final-score" style="color:#0ff; font-size:24px; font-weight:bold;">0</span></p>
-        <button class="btn" onclick="startGame()">Ещё раз</button>
+    <!-- Улучшения -->
+    <div id="shop">
+        <div class="upg-btn" onclick="upgrade('pickaxe')">КИРКА<span id="cost-pickaxe">50🪙</span></div>
+        <div class="upg-btn" onclick="upgrade('furnace')">ПЕЧЬ<span id="cost-furnace">80🪙</span></div>
+        <div class="upg-btn" onclick="upgrade('anvil')">МОЛОТ<span id="cost-anvil">100🪙</span></div>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-        const bestScoreEl = document.getElementById('best-score');
-        const startScreen = document.getElementById('start-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const finalScoreEl = document.getElementById('final-score');
-
-        let width, height;
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // --- ЗВУКИ ---
+        // --- ЗВУКИ (Web Audio API) ---
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        
+        document.body.addEventListener('pointerdown', initAudio, { once: true });
+
         function playSound(type) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
@@ -158,245 +218,213 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
-            if (type === 'jump') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+            if (type === 'hit') { // Удар киркой/молотом
+                osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
                 gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.start(now); osc.stop(now + 0.1);
-            } else if (type === 'die') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
-                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now); osc.stop(now + 0.5);
-            } else if (type === 'score') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(800, now);
-                gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'smelt') { // Шипение печи
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'sell') { // Звон монет
+                osc.type = 'sine'; osc.frequency.setValueAtTime(988, now); osc.frequency.setValueAtTime(1319, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'upgrade') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(800, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
             }
         }
 
-        // --- ЛОГИКА ---
-        let isPlaying = false;
-        let score = 0;
-        let bestScore = parseInt(localStorage.getItem('neonDashBest')) || 0;
-        bestScoreEl.textContent = `РЕКОРД: ${bestScore}`;
+        // --- СОСТОЯНИЕ ИГРЫ ---
+        let ore = 0, ingots = 0, swords = 0, coins = 0;
+        
+        let pickaxeLvl = 1;
+        let furnaceLvl = 1;
+        let anvilLvl = 1;
 
-        let gameSpeed = 6;
-        let spawnTimer = 0;
-        let spawnInterval = 90; // Кадров между шипами
+        let costPickaxe = 50, costFurnace = 80, costAnvil = 100;
 
-        const player = {
-            x: 50,
-            y: 0,
-            width: 30,
-            height: 30,
-            vy: 0,
-            gravity: 0.6,
-            jumpForce: -12,
-            isGrounded: true
-        };
+        // Таймеры и флаги
+        let isSmelting = false;
+        let forgeHits = 0;
+        let maxForgeHits = 3 - (anvilLvl > 3 ? 1 : 0); // На высоком уровне нужно меньше ударов
+        let mineHits = 0, maxMineHits = 4;
 
-        let obstacles = [];
-        let particles = [];
+        // DOM
+        const uiOre = document.getElementById('ui-ore');
+        const uiIngot = document.getElementById('ui-ingot');
+        const uiSword = document.getElementById('ui-sword');
+        const uiCoin = document.getElementById('ui-coin');
+        const ghSpeech = document.getElementById('gh-speech');
+        
+        const hintFurnace = document.getElementById('hint-furnace');
+        const hintAnvil = document.getElementById('hint-anvil');
+        const hintShop = document.getElementById('hint-shop');
+        const iconAnvil = document.getElementById('icon-anvil');
+        const stFurnace = document.getElementById('st-furnace');
+        const iconMine = document.getElementById('icon-mine');
 
-        // Адаптация под экран (на телефоне персонаж чуть ниже)
-        function resetPlayer() {
-            player.y = height - player.height - 50;
-            player.vy = 0;
-            player.isGrounded = true;
+        function updateUI() {
+            uiOre.textContent = ore;
+            uiIngot.textContent = ingots;
+            uiSword.textContent = swords;
+            uiCoin.textContent = coins;
+
+            // Показываем подсказки (стрелочки)
+            hintFurnace.classList.toggle('hidden', ore === 0 || isSmelting);
+            hintAnvil.classList.toggle('hidden', ingots === 0 || swords > 0);
+            hintShop.classList.toggle('hidden', swords === 0);
+            
+            // Обновляем цены
+            document.getElementById('cost-pickaxe').textContent = costPickaxe + '🪙';
+            document.getElementById('cost-furnace').textContent = costFurnace + '🪙';
+            document.getElementById('cost-anvil').textContent = costAnvil + '🪙';
         }
 
-        // Управление
-        function jump() {
-            if (!isPlaying) return;
-            if (player.isGrounded) {
-                player.vy = player.jumpForce;
-                player.isGrounded = false;
-                playSound('jump');
-                createParticles(player.x, player.y + player.height, '#0ff', 5);
+        function say(text) {
+            ghSpeech.textContent = text;
+            ghSpeech.style.opacity = '1';
+            setTimeout(() => { ghSpeech.style.opacity = '0'; }, 3000);
+        }
+
+        function createParticle(x, y, emoji) {
+            const p = document.createElement('div');
+            p.classList.add('particle');
+            p.textContent = emoji;
+            p.style.left = x + 'px';
+            p.style.top = y + 'px';
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 500);
+        }
+
+        // --- 1. ШАХТА ---
+        function mineOre() {
+            if (isSmelting) return; // Нельзя копать во время плавки (для баланса)
+            
+            playSound('hit');
+            iconMine.classList.add('cracked');
+            setTimeout(() => iconMine.classList.remove('cracked'), 200);
+
+            const rect = document.getElementById('st-mine').getBoundingClientRect();
+            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '💥');
+
+            mineHits++;
+            if (mineHits >= maxMineHits) {
+                mineHits = 0;
+                ore += pickaxeLvl;
+                updateUI();
+                createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '🪨');
+                say(`+${pickaxeLvl} руды! Отнеси в печь.`);
             }
         }
 
-        // Обработка тапов (и клики мышкой для ПК)
-        window.addEventListener('pointerdown', (e) => {
-            initAudio(); // Разблокировка звука
-            if (e.target.tagName !== 'BUTTON') {
-                jump();
-            }
-        });
+        // --- 2. ПЕЧЬ ---
+        function smeltOre() {
+            if (ore <= 0) { playSound('error'); say("Нет руды! Сначала накопай."); return; }
+            if (isSmelting) { say("Печь уже работает!"); return; }
 
-        function startGame() {
-            initAudio();
-            startScreen.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
-            
-            isPlaying = true;
-            score = 0;
-            gameSpeed = 6;
-            spawnTimer = 0;
-            spawnInterval = 90;
-            obstacles = [];
-            particles = [];
-            
-            resetPlayer();
-            scoreEl.textContent = score;
-            scoreEl.style.color = '#0ff';
-            
-            requestAnimationFrame(update);
-        }
+            ore--;
+            isSmelting = true;
+            stFurnace.classList.add('burning');
+            playSound('smelt');
+            updateUI();
+            say("Плавлю руду...");
 
-        function gameOver() {
-            isPlaying = false;
-            playSound('die');
-            createParticles(player.x + player.width/2, player.y + player.height/2, '#ff0055', 30);
-            
-            if (score > bestScore) {
-                bestScore = score;
-                localStorage.setItem('neonDashBest', bestScore);
-                bestScoreEl.textContent = `РЕКОРД: ${bestScore}`;
-            }
+            // Время плавки зависит от уровня печи (чем выше, тем быстрее)
+            const smeltTime = Math.max(1000, 3000 - (furnaceLvl * 500));
 
-            finalScoreEl.textContent = score;
             setTimeout(() => {
-                gameOverScreen.classList.remove('hidden');
-            }, 500);
+                isSmelting = false;
+                stFurnace.classList.remove('burning');
+                ingots++;
+                playSound('sell'); // Звук готовности
+                say("Слиток готов! Тащи на наковальню.");
+                updateUI();
+            }, smeltTime);
         }
 
-        // Частицы для эффектов
-        function createParticles(x, y, color, count) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10,
-                    life: 1,
-                    color: color
-                });
+        // --- 3. НАКОВАЛЬНЯ ---
+        function forgeSword() {
+            if (swords > 0) { playSound('error'); say("У тебя уже есть меч! Иди продавай."); return; }
+            if (ingots <= 0) { playSound('error'); say("Нужен слиток!"); return; }
+
+            playSound('hit');
+            
+            // Анимация удара
+            iconAnvil.style.transform = 'scale(0.8)';
+            setTimeout(() => iconAnvil.style.transform = 'scale(1)', 100);
+
+            const rect = document.getElementById('st-anvil').getBoundingClientRect();
+            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '✨');
+
+            forgeHits++;
+            if (forgeHits >= maxForgeHits) {
+                forgeHits = 0;
+                ingots--;
+                swords++;
+                updateUI();
+                say("Меч выкован! Неси на продажу.");
+                playSound('sell');
+            } else {
+                say(`Ещё удар! (${forgeHits}/${maxForgeHits})`);
             }
         }
 
-        // Основной игровой цикл
-        function update() {
-            if (!isPlaying) return;
+        // --- 4. ПРОДАЖА ---
+        function sellSword() {
+            if (swords <= 0) { playSound('error'); say("Нечего продавать!"); return; }
 
-            // Очистка экрана
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, width, height);
+            swords--;
+            // Цена меча зависит от уровня наковальни
+            const price = 20 + (anvilLvl * 10); 
+            coins += price;
+            playSound('sell');
+            updateUI();
+            
+            const rect = document.getElementById('st-shop').getBoundingClientRect();
+            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '🪙');
+            say(`Продано за ${price} монет!`);
+        }
 
-            // Рисуем неоновую сетку на полу (для скорости)
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
-            ctx.lineWidth = 1;
-            const floorY = height - 50;
-            for (let i = 0; i < width; i += 40) {
-                let offset = (Date.now() / 10) % 40;
-                ctx.beginPath(); ctx.moveTo(i - offset, floorY); ctx.lineTo(i - offset + 20, height); ctx.stroke();
+        // --- УЛУЧШЕНИЯ ---
+        function upgrade(type) {
+            playSound('error'); // По умолчанию звук ошибки
+
+            if (type === 'pickaxe' && coins >= costPickaxe) {
+                coins -= costPickaxe;
+                pickaxeLvl++;
+                costPickaxe = Math.floor(costPickaxe * 1.8);
+                maxMineHits = Math.max(2, maxMineHits - 1); // Копать станет легче
+                playSound('upgrade'); say("Кирка улучшена! Копаем быстрее.");
+            } 
+            else if (type === 'furnace' && coins >= costFurnace) {
+                coins -= costFurnace;
+                furnaceLvl++;
+                costFurnace = Math.floor(costFurnace * 1.8);
+                playSound('upgrade'); say("Печь улучшена! Плавит быстрее.");
+            } 
+            else if (type === 'anvil' && coins >= costAnvil) {
+                coins -= costAnvil;
+                anvilLvl++;
+                costAnvil = Math.floor(costAnvil * 1.8);
+                maxForgeHits = Math.max(1, maxForgeHits - 1); // Нужно меньше ударов
+                playSound('upgrade'); say("Молот улучшен! Мечи дороже.");
+            } 
+            else {
+                say("Не хватает монет!");
+                return;
             }
-            ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(width, floorY); ctx.stroke();
-
-            // Физика игрока
-            player.vy += player.gravity;
-            player.y += player.vy;
-
-            if (player.y >= height - player.height - 50) {
-                player.y = height - player.height - 50;
-                player.vy = 0;
-                player.isGrounded = true;
-            }
-
-            // Рисуем игрока (с неоновым свечением)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#0ff';
-            ctx.fillStyle = '#0ff';
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            // Внутренний квадрат для стиля
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(player.x + 5, player.y + 5, player.width - 10, player.height - 10);
-            ctx.shadowBlur = 0;
-
-            // Спавн препятствий
-            spawnTimer++;
-            if (spawnTimer > spawnInterval) {
-                spawnTimer = 0;
-                // Иногда спавним двойные шипы для сложности
-                let isDouble = Math.random() > 0.8 && score > 20; 
-                
-                obstacles.push({
-                    x: width,
-                    y: height - 50 - (isDouble ? 40 : 20), // Высота шипа
-                    width: isDouble ? 40 : 20,
-                    height: isDouble ? 60 : 30,
-                    counted: false // Для начисления очков
-                });
-            }
-
-            // Логика препятствий
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff0055';
-            ctx.fillStyle = '#ff0055';
-
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed;
-
-                // Рисуем шип (треугольник)
-                ctx.beginPath();
-                ctx.moveTo(obs.x, obs.y + obs.height);
-                ctx.lineTo(obs.x + obs.width / 2, obs.y);
-                ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
-                ctx.fill();
-
-                // Проверка на столкновение (AABB)
-                if (
-                    player.x < obs.x + obs.width &&
-                    player.x + player.width > obs.x &&
-                    player.y < obs.y + obs.height &&
-                    player.y + player.height > obs.y
-                ) {
-                    gameOver();
-                    return;
-                }
-
-                // Начисление очков (пролетели шип)
-                if (obs.x + obs.width < player.x && !obs.counted) {
-                    obs.counted = true;
-                    score++;
-                    scoreEl.textContent = score;
-                    playSound('score');
-                    
-                    // Ускорение игры каждые 5 очков
-                    if (score % 5 === 0) {
-                        gameSpeed += 0.5;
-                    }
-                }
-
-                // Удаление ушедших за экран
-                if (obs.x + obs.width < 0) {
-                    obstacles.splice(i, 1);
-                }
-            }
-            ctx.shadowBlur = 0;
-
-            // Логика частиц
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life -= 0.02;
-                p.vy += 0.2; // гравитация для частиц
-
-                if (p.life <= 0) {
-                    particles.splice(i, 1);
-                } else {
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = p.life;
-                    ctx.fillRect(p.x, p.y, 4, 4);
-                    ctx.globalAlpha = 1;
-                }
-            }
-
-            requestAnimationFrame(update);
+            updateUI();
         }
 
         // Инициализация
-        resetPlayer();
+        updateUI();
     </script>
 </body>
 </html>
