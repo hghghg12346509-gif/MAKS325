@@ -17,9 +17,9 @@
         * { 
             box-sizing: border-box; 
             font-family: 'Montserrat', sans-serif; 
-            user-select: none; /* Запрет выделения текста */
+            user-select: none; 
             -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent; /* Убирает синюю рамку при тапе на телефоне */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         body {
@@ -29,7 +29,7 @@
             height: 100vh;
             overflow: hidden;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            touch-action: manipulation; /* Отключает зум пальцами */
+            touch-action: manipulation; 
         }
 
         /* --- ЭКРАНЫ --- */
@@ -46,9 +46,10 @@
             background: var(--accent); color: white; border: 3px solid transparent; 
             padding: 20px; border-radius: 20px; font-size: 22px; font-weight: 900;
             box-shadow: 0 6px 0 #091c35; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
         }
         .level-btn:active { transform: translateY(6px); box-shadow: none; }
-        .level-btn.locked { background: #333; color: #666; box-shadow: 0 6px 0 #222; }
+        .level-btn.locked { background: #333; color: #666; box-shadow: 0 6px 0 #222; cursor: not-allowed; }
         .level-desc { font-size: 14px; color: #ccc; font-weight: 700; display: block; margin-top: 5px; }
         
         /* Цвета уровней */
@@ -85,7 +86,8 @@
             cursor: pointer; transition: transform 0.05s, box-shadow 0.05s;
             margin: 20px auto;
         }
-        .tap-button:active {
+        /* Класс для визуального нажатия с клавиатуры */
+        .tap-button.pressed {
             transform: translateY(15px) scale(0.95);
             box-shadow: 0 0 0 #5a0010, 0 5px 10px rgba(0,0,0,0.5);
         }
@@ -93,6 +95,7 @@
         .btn-back {
             background: #444; color: white; border: none; padding: 15px 30px; border-radius: 15px; 
             font-size: 18px; font-weight: 900; margin-top: 20px; box-shadow: 0 5px 0 #222;
+            cursor: pointer;
         }
         .btn-back:active { transform: translateY(5px); box-shadow: none; }
 
@@ -106,7 +109,7 @@
         .btn-action {
             background: var(--btn-color); color: white; border: none; padding: 20px 40px; border-radius: 20px; 
             font-size: 24px; font-weight: 900; width: 100%; max-width: 300px; box-shadow: 0 8px 0 #a3122a;
-            margin-bottom: 15px;
+            margin-bottom: 15px; cursor: pointer;
         }
         .btn-action:active { transform: translateY(8px); box-shadow: none; }
 
@@ -166,7 +169,6 @@
 
     <script>
         // --- НАСТРОЙКИ УРОВНЕЙ ---
-        // 1 - легкий, 2 - средний, 3 - сложный, 4 - очень сложный, 5 - хардкор
         const levels = [
             { id: 1, name: "Легкий", target: 30, time: 20, color: "#32cd32" },
             { id: 2, name: "Средний", target: 60, time: 20, color: "#ffd700" },
@@ -189,8 +191,9 @@
         const targetDisplay = document.getElementById('target-display');
         const progressBar = document.getElementById('progress-bar');
         const levelNameDisplay = document.getElementById('level-name-display');
+        const tapBtn = document.getElementById('tap-btn');
         
-        // --- ВИБРАЦИЯ (только для телефонов) ---
+        // --- ВИБРАЦИЯ ---
         function vibrate(ms) {
             if (navigator.vibrate) navigator.vibrate(ms);
         }
@@ -198,7 +201,9 @@
         // --- ЗВУКИ ---
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        // Инициализируем звук при первом клике или нажатии клавиши
         document.body.addEventListener('pointerdown', initAudio, { once: true });
+        document.body.addEventListener('keydown', initAudio, { once: true });
 
         function playSound(type) {
             if (!audioCtx) return;
@@ -289,36 +294,56 @@
             timerDisplay.textContent = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
         }
 
-        // Обработка нажатия (pointerdown работает быстрее, чем click, на телефонах)
-        const tapBtn = document.getElementById('tap-btn');
-        tapBtn.addEventListener('pointerdown', (e) => {
+        // --- ЕДИНАЯ ФУНКЦИЯ ТАПА ---
+        function processTap(x, y) {
             if (!isPlaying) return;
             
             taps++;
             scoreDisplay.textContent = taps;
             playSound('tap');
-            vibrate(15); // Короткая вибрация
+            vibrate(15); 
             
-            // Прогресс бар
             const progress = Math.min((taps / levels[currentLevelIndex].target) * 100, 100);
             progressBar.style.width = progress + '%';
 
-            // Эффект тряски экрана (если играем)
             if (taps % 10 === 0) {
                 document.body.classList.add('shake');
                 setTimeout(() => document.body.classList.remove('shake'), 300);
             }
 
-            // Создаем частицу в месте клика
-            createParticle(e.clientX, e.clientY);
+            // Если координаты не переданы (нажали на клавиатуру), берем центр кнопки
+            if (x === undefined || y === undefined) {
+                const rect = tapBtn.getBoundingClientRect();
+                x = rect.left + rect.width / 2;
+                y = rect.top + rect.height / 2;
+            }
 
-            // Проверка на победу
+            createParticle(x, y);
+
             if (taps >= levels[currentLevelIndex].target) {
                 endGame(true);
             }
+        }
+
+        // 1. Тап мышкой или пальцем
+        tapBtn.addEventListener('pointerdown', (e) => {
+            processTap(e.clientX, e.clientY);
         });
 
-        // Запрет на стандартное поведение (например, выделение или контекстное меню)
+        // 2. Тап с клавиатуры (Пробел и Enter)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault(); // Чтобы страница не скроллилась пробелом
+                
+                // Визуальный эффект нажатия кнопки
+                tapBtn.classList.add('pressed');
+                setTimeout(() => tapBtn.classList.remove('pressed'), 50);
+
+                processTap();
+            }
+        });
+
+        // Запрет на контекстное меню (при долгом зажатии на телефоне)
         tapBtn.addEventListener('contextmenu', e => e.preventDefault());
 
         function createParticle(x, y) {
@@ -329,9 +354,8 @@
             particle.style.left = x + 'px';
             particle.style.top = y + 'px';
             
-            // Рандомное направление разлета
             const tx = (Math.random() - 0.5) * 200;
-            const ty = (Math.random() - 0.5) * 200 - 50; // Чуть вверх
+            const ty = (Math.random() - 0.5) * 200 - 50; 
             particle.style.setProperty('--tx', tx + 'px');
             particle.style.setProperty('--ty', ty + 'px');
             
@@ -350,28 +374,26 @@
 
             if (isWin) {
                 playSound('win');
-                vibrate([50, 50, 50, 50, 100]); // Победная вибрация
+                vibrate([50, 50, 50, 50, 100]); 
                 title.textContent = "ПОБЕДА!";
                 title.className = "result-title win";
                 emoji.textContent = "🏆";
                 stats.textContent = `Ты сделал ${taps} тапов!`;
                 
-                // Разблокировка следующего
                 if (levels[currentLevelIndex].id === unlockedLevel && unlockedLevel < levels.length) {
                     unlockedLevel++;
                     localStorage.setItem('tapUnlocked', unlockedLevel);
                 }
 
-                // Настройка кнопки "Дальше"
                 if (currentLevelIndex < levels.length - 1) {
                     nextBtn.style.display = 'block';
                 } else {
-                    nextBtn.style.display = 'none'; // Если прошел всё
+                    nextBtn.style.display = 'none'; 
                     stats.textContent = "ТЫ ПРОШЕЛ ВСЮ ИГРУ! КРАСАВА! 👑";
                 }
             } else {
                 playSound('lose');
-                vibrate([100, 100, 100]); // Вибрация проигрыша
+                vibrate([100, 100, 100]); 
                 title.textContent = "ВРЕМЯ ВЫШЛО";
                 title.className = "result-title lose";
                 emoji.textContent = "💀";
