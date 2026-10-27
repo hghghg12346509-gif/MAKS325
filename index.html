@@ -2,415 +2,394 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <!-- ВАЖНО ДЛЯ ТЕЛЕФОНА: масштаб и отключение зума при двойном тапе -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Geometry Dash Clicker</title>
+    <title>Мега Тапалка</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
-
         :root {
-            --bg: #050510;
-            --cyan: #00ffff;
-            --magenta: #ff00ff;
-            --yellow: #ffff00;
-            --green: #39ff14;
-            --panel: rgba(20, 20, 35, 0.9);
+            --bg: #1a1a2e;
+            --btn-color: #e94560;
+            --text: #ffffff;
+            --accent: #0f3460;
         }
 
-        * {
-            box-sizing: border-box;
-            font-family: 'Orbitron', sans-serif;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+        * { 
+            box-sizing: border-box; 
+            font-family: 'Montserrat', sans-serif; 
+            user-select: none; /* Запрет выделения текста */
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Убирает синюю рамку при тапе на телефоне */
         }
 
         body {
             margin: 0; padding: 0;
-            background-color: var(--bg);
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: var(--bg);
+            color: var(--text); 
+            height: 100vh;
             overflow: hidden;
-            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            touch-action: manipulation; /* Отключает зум пальцами */
         }
 
-        /* Неоновая сетка на фоне */
-        .grid-bg {
-            position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-image: 
-                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 40px 40px;
-            z-index: -1;
-            perspective: 500px;
-            transform: scale(1.5);
-            animation: gridMove 2s linear infinite;
-        }
-        @keyframes gridMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 40px; }
-        }
+        /* --- ЭКРАНЫ --- */
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; text-align: center; }
+        .screen.active { display: flex; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        /* Верхняя панель */
-        #top-bar {
-            width: 100%; max-width: 600px;
-            display: flex; justify-content: space-between;
-            padding: 20px; z-index: 10;
-        }
-        .stat-box {
-            background: var(--panel);
-            border: 2px solid var(--cyan);
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-            padding: 10px 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .stat-box span { display: block; color: var(--cyan); font-size: 24px; font-weight: 900; }
-        .stat-box p { margin: 0; font-size: 12px; color: #aaa; }
-
-        /* Игровое поле (Куб) */
-        #click-area {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            cursor: pointer;
-            z-index: 10;
-        }
-
-        #cube {
-            width: 120px; height: 120px;
-            background: var(--cyan);
-            border: 4px solid #fff;
-            box-shadow: 0 0 30px var(--cyan), inset 0 0 20px #fff;
-            border-radius: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-        }
+        /* --- МЕНЮ (ВЫБОР УРОВНЯ) --- */
+        h1 { font-size: 36px; margin-bottom: 10px; color: #fff; text-shadow: 0 0 10px var(--btn-color); }
+        .subtitle { font-size: 16px; color: #aaa; margin-bottom: 30px; }
         
-        /* Лицо куба (чтобы было похоже на иконку из GD) */
-        #cube::before {
-            content: '👁️';
-            font-size: 50px;
-            filter: grayscale(1) brightness(0.2); /* Делаем глаз темным */
+        .levels-container { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; }
+        .level-btn {
+            background: var(--accent); color: white; border: 3px solid transparent; 
+            padding: 20px; border-radius: 20px; font-size: 22px; font-weight: 900;
+            box-shadow: 0 6px 0 #091c35; transition: 0.1s; display: flex; justify-content: space-between; align-items: center;
         }
-
-        #cube.clicked {
-            transform: scale(0.8) rotate(90deg);
-            background: var(--magenta);
-            box-shadow: 0 0 50px var(--magenta);
-        }
-
-        /* Всплывающий текст (+1) */
-        .floating-text {
-            position: absolute;
-            color: var(--yellow);
-            font-size: 24px;
-            font-weight: 900;
-            pointer-events: none;
-            animation: floatUp 0.8s ease-out forwards;
-            text-shadow: 0 0 10px var(--yellow);
-            z-index: 20;
-        }
-        @keyframes floatUp {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
-        }
-
-        /* Магазин (Улучшения) */
-        #shop {
-            width: 100%; max-width: 600px;
-            background: var(--panel);
-            border-top: 4px solid var(--magenta);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 10;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -10px 30px rgba(255, 0, 255, 0.2);
-        }
-
-        .upgrade-btn {
-            background: #111;
-            border: 2px solid #333;
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .upgrade-btn:hover { border-color: var(--yellow); }
-        .upgrade-btn:active { transform: scale(0.98); }
+        .level-btn:active { transform: translateY(6px); box-shadow: none; }
+        .level-btn.locked { background: #333; color: #666; box-shadow: 0 6px 0 #222; }
+        .level-desc { font-size: 14px; color: #ccc; font-weight: 700; display: block; margin-top: 5px; }
         
-        .upgrade-btn.affordable {
-            border-color: var(--green);
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
-        }
-
-        .upg-info { text-align: left; }
-        .upg-title { font-size: 16px; font-weight: 900; color: #fff; margin-bottom: 5px; }
-        .upg-desc { font-size: 12px; color: #888; }
+        /* Цвета уровней */
+        .level-btn[data-id="1"] { --btn-bg: #32cd32; --shadow: #228b22; }
+        .level-btn[data-id="2"] { --btn-bg: #ffd700; --shadow: #daa520; color: #333;}
+        .level-btn[data-id="3"] { --btn-bg: #ff8c00; --shadow: #cc7000; }
+        .level-btn[data-id="4"] { --btn-bg: #ff4500; --shadow: #b22222; }
+        .level-btn[data-id="5"] { --btn-bg: #8b0000; --shadow: #4a0000; }
         
-        .upg-cost {
-            font-size: 18px;
-            font-weight: 900;
-            color: var(--green);
-            background: rgba(57, 255, 20, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-        }
-        .upg-cost.cant-afford { color: #ff3333; background: rgba(255, 51, 51, 0.1); }
+        .level-btn.unlocked { background: var(--btn-bg); box-shadow: 0 6px 0 var(--shadow); }
 
-        @media (min-width: 600px) {
-            #shop { flex-direction: row; }
-            .upgrade-btn { flex: 1; flex-direction: column; text-align: center; gap: 10px; }
-            .upg-info { text-align: center; }
+        /* --- ИГРОВОЙ ЭКРАН --- */
+        #game-screen { justify-content: space-between; padding: 40px 20px; }
+        
+        .top-bar { width: 100%; display: flex; justify-content: space-between; font-size: 28px; font-weight: 900; }
+        .timer { color: #fff; }
+        .timer.danger { color: var(--btn-color); animation: pulse 0.5s infinite alternate; }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        
+        .score-display { font-size: 60px; font-weight: 900; margin-top: 20px; }
+        .target-text { font-size: 20px; color: #aaa; margin-bottom: 20px; }
+        
+        /* Прогресс-бар */
+        .progress-container { width: 100%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; margin-bottom: 30px; border: 2px solid #555; }
+        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--btn-color), #ff8c00); transition: width 0.1s; }
+
+        /* ОГРОМНАЯ КНОПКА */
+        .tap-button {
+            width: 70vw; height: 70vw; max-width: 350px; max-height: 350px;
+            border-radius: 50%; background: radial-gradient(circle, #e94560, #a3122a);
+            border: 10px solid #fff; box-shadow: 0 15px 0 #5a0010, 0 20px 20px rgba(0,0,0,0.5);
+            font-size: 60px; font-weight: 900; color: white;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: transform 0.05s, box-shadow 0.05s;
+            margin: 20px auto;
+        }
+        .tap-button:active {
+            transform: translateY(15px) scale(0.95);
+            box-shadow: 0 0 0 #5a0010, 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .btn-back {
+            background: #444; color: white; border: none; padding: 15px 30px; border-radius: 15px; 
+            font-size: 18px; font-weight: 900; margin-top: 20px; box-shadow: 0 5px 0 #222;
+        }
+        .btn-back:active { transform: translateY(5px); box-shadow: none; }
+
+        /* --- ЭКРАН РЕЗУЛЬТАТА --- */
+        .result-title { font-size: 50px; font-weight: 900; margin-bottom: 10px; }
+        .result-title.win { color: #32cd32; text-shadow: 0 0 20px #32cd32; }
+        .result-title.lose { color: var(--btn-color); text-shadow: 0 0 20px var(--btn-color); }
+        .result-emoji { font-size: 100px; margin: 20px 0; }
+        .result-stats { font-size: 24px; margin-bottom: 30px; color: #ccc; }
+        
+        .btn-action {
+            background: var(--btn-color); color: white; border: none; padding: 20px 40px; border-radius: 20px; 
+            font-size: 24px; font-weight: 900; width: 100%; max-width: 300px; box-shadow: 0 8px 0 #a3122a;
+            margin-bottom: 15px;
+        }
+        .btn-action:active { transform: translateY(8px); box-shadow: none; }
+
+        /* --- ЧАСТИЦЫ И ТРЯСКА --- */
+        .particle { position: fixed; pointer-events: none; font-size: 30px; animation: popOut 0.5s ease-out forwards; z-index: 100; }
+        @keyframes popOut { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; } }
+        
+        .shake { animation: shakeScreen 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shakeScreen {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+            40%, 60% { transform: translate3d(8px, 0, 0); }
         }
     </style>
 </head>
 <body>
 
-    <div class="grid-bg"></div>
-
-    <div id="top-bar">
-        <div class="stat-box">
-            <span id="ui-orbs">0</span>
-            <p>ОСКОЛКИ</p>
-        </div>
-        <div class="stat-box">
-            <span id="ui-ops" style="color: var(--magenta); text-shadow: 0 0 10px var(--magenta);">0</span>
-            <p>В СЕКУНДУ</p>
-        </div>
+    <!-- ГЛАВНОЕ МЕНЮ -->
+    <div id="menu-screen" class="screen active">
+        <h1>🔥 МЕГА ТАПАЛКА</h1>
+        <div class="subtitle">Жми на кнопку, пока не вышло время!</div>
+        <div class="levels-container" id="levels-container"></div>
     </div>
 
-    <div id="click-area">
-        <div id="cube"></div>
+    <!-- ИГРА -->
+    <div id="game-screen" class="screen">
+        <div style="width: 100%;">
+            <div class="top-bar">
+                <div class="timer" id="timer-display">00:00</div>
+                <div id="level-name-display" style="color: #888;">Уровень</div>
+            </div>
+            
+            <div style="text-align: center;">
+                <div class="score-display" id="score-display">0</div>
+                <div class="target-text">Цель: <span id="target-display">0</span></div>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div class="tap-button" id="tap-btn">ТАП</div>
+
+        <button class="btn-back" onclick="backToMenu()">← Сдаться</button>
     </div>
 
-    <div id="shop">
-        <div class="upgrade-btn" id="btn-power" onclick="buyUpgrade('power')">
-            <div class="upg-info">
-                <div class="upg-title">Сила Куба (Ур. <span id="lvl-power">1</span>)</div>
-                <div class="upg-desc">+1 осколок за клик</div>
-            </div>
-            <div class="upg-cost" id="cost-power">Цена: 10</div>
-        </div>
-        
-        <div class="upgrade-btn" id="btn-auto" onclick="buyUpgrade('auto')">
-            <div class="upg-info">
-                <div class="upg-title">Дрон (Ур. <span id="lvl-auto">0</span>)</div>
-                <div class="upg-desc">+1 осколок в секунду</div>
-            </div>
-            <div class="upg-cost" id="cost-auto">Цена: 50</div>
-        </div>
-
-        <div class="upgrade-btn" id="btn-mult" onclick="buyUpgrade('mult')">
-            <div class="upg-info">
-                <div class="upg-title">Мега-Буст (Ур. <span id="lvl-mult">0</span>)</div>
-                <div class="upg-desc">x2 ко всему доходу</div>
-            </div>
-            <div class="upg-cost" id="cost-mult">Цена: 500</div>
-        </div>
+    <!-- РЕЗУЛЬТАТ -->
+    <div id="result-screen" class="screen">
+        <div class="result-title" id="result-title">ПОБЕДА</div>
+        <div class="result-emoji" id="result-emoji">🏆</div>
+        <div class="result-stats" id="result-stats">Ты сделал 0 кликов</div>
+        <button class="btn-action" id="next-level-btn" onclick="nextLevel()">Дальше</button>
+        <button class="btn-action" style="background: #444; box-shadow: 0 8px 0 #222;" onclick="backToMenu()">В меню</button>
     </div>
 
     <script>
-        // --- АУДИО ДВИЖОК ---
+        // --- НАСТРОЙКИ УРОВНЕЙ ---
+        // 1 - легкий, 2 - средний, 3 - сложный, 4 - очень сложный, 5 - хардкор
+        const levels = [
+            { id: 1, name: "Легкий", target: 30, time: 20, color: "#32cd32" },
+            { id: 2, name: "Средний", target: 60, time: 20, color: "#ffd700" },
+            { id: 3, name: "Сложный", target: 100, time: 20, color: "#ff8c00" },
+            { id: 4, name: "Очень сложный", target: 150, time: 20, color: "#ff4500" },
+            { id: 5, name: "ХАРДКОР", target: 200, time: 20, color: "#8b0000" }
+        ];
+
+        let unlockedLevel = parseInt(localStorage.getItem('tapUnlocked')) || 1;
+        let currentLevelIndex = 0;
+        let taps = 0;
+        let timeLeft = 0;
+        let gameInterval = null;
+        let isPlaying = false;
+
+        // DOM Элементы
+        const levelsContainer = document.getElementById('levels-container');
+        const timerDisplay = document.getElementById('timer-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const targetDisplay = document.getElementById('target-display');
+        const progressBar = document.getElementById('progress-bar');
+        const levelNameDisplay = document.getElementById('level-name-display');
+        
+        // --- ВИБРАЦИЯ (только для телефонов) ---
+        function vibrate(ms) {
+            if (navigator.vibrate) navigator.vibrate(ms);
+        }
+
+        // --- ЗВУКИ ---
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         document.body.addEventListener('pointerdown', initAudio, { once: true });
 
         function playSound(type) {
             if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
 
-            if (type === 'click') {
-                // Звук прыжка (короткий высокий писк)
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(900, now + 0.05);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            if (type === 'tap') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400 + Math.random()*100, now); 
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05); 
                 osc.start(now); osc.stop(now + 0.05);
-            } else if (type === 'buy') {
-                // Звук покупки (восходящее арпеджио)
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.setValueAtTime(600, now + 0.1);
-                osc.frequency.setValueAtTime(800, now + 0.2);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-                osc.start(now); osc.stop(now + 0.3);
-            } else if (type === 'error') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, now);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'win') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(600, now + 0.1); osc.frequency.setValueAtTime(800, now + 0.2); osc.frequency.setValueAtTime(1000, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5);
+            } else if (type === 'lose') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5);
             }
         }
 
-        // --- СОСТОЯНИЕ ИГРЫ ---
-        let orbs = 0;
-        let clickPower = 1;
-        let autoPower = 0;
-        let multiplier = 1;
+        // --- ОТРИСОВКА МЕНЮ ---
+        function renderMenu() {
+            levelsContainer.innerHTML = '';
+            levels.forEach((lvl, index) => {
+                const btn = document.createElement('button');
+                const isUnlocked = lvl.id <= unlockedLevel;
+                
+                btn.className = `level-btn ${isUnlocked ? 'unlocked' : 'locked'}`;
+                btn.setAttribute('data-id', lvl.id);
+                
+                if (isUnlocked) {
+                    btn.innerHTML = `<div>${lvl.name} <span class="level-desc">${lvl.target} тапов за ${lvl.time} сек</span></div>`;
+                    btn.onclick = () => startGame(index);
+                } else {
+                    btn.innerHTML = `<div>🔒 Закрыто</div>`;
+                }
+                levelsContainer.appendChild(btn);
+            });
+        }
 
-        let lvlPower = 1;
-        let lvlAuto = 0;
-        let lvlMult = 0;
+        // --- НАВИГАЦИЯ ---
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
 
-        let costPower = 10;
-        let costAuto = 50;
-        let costMult = 500;
+        function backToMenu() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            switchScreen('menu-screen');
+            renderMenu();
+        }
 
-        // DOM Элементы
-        const uiOrbs = document.getElementById('ui-orbs');
-        const uiOps = document.getElementById('ui-ops');
-        const cube = document.getElementById('cube');
-        const clickArea = document.getElementById('click-area');
+        // --- ЛОГИКА ИГРЫ ---
+        function startGame(levelIndex) {
+            currentLevelIndex = levelIndex;
+            const level = levels[levelIndex];
+            
+            taps = 0;
+            timeLeft = level.time;
+            isPlaying = true;
+            
+            scoreDisplay.textContent = taps;
+            targetDisplay.textContent = level.target;
+            levelNameDisplay.textContent = level.name;
+            progressBar.style.width = '0%';
+            timerDisplay.classList.remove('danger');
+            updateTimerDisplay();
 
-        // Загрузка сохранения
-        function loadGame() {
-            const saved = localStorage.getItem('gdClickerSave');
-            if (saved) {
-                const data = JSON.parse(saved);
-                orbs = data.orbs || 0;
-                clickPower = data.clickPower || 1;
-                autoPower = data.autoPower || 0;
-                multiplier = data.multiplier || 1;
-                lvlPower = data.lvlPower || 1;
-                lvlAuto = data.lvlAuto || 0;
-                lvlMult = data.lvlMult || 0;
-                costPower = data.costPower || 10;
-                costAuto = data.costAuto || 50;
-                costMult = data.costMult || 500;
+            switchScreen('game-screen');
+            
+            clearInterval(gameInterval);
+            gameInterval = setInterval(() => {
+                if (!isPlaying) return;
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 5 && timeLeft > 0) {
+                    timerDisplay.classList.add('danger');
+                }
+
+                if (timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            timerDisplay.textContent = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
+        }
+
+        // Обработка нажатия (pointerdown работает быстрее, чем click, на телефонах)
+        const tapBtn = document.getElementById('tap-btn');
+        tapBtn.addEventListener('pointerdown', (e) => {
+            if (!isPlaying) return;
+            
+            taps++;
+            scoreDisplay.textContent = taps;
+            playSound('tap');
+            vibrate(15); // Короткая вибрация
+            
+            // Прогресс бар
+            const progress = Math.min((taps / levels[currentLevelIndex].target) * 100, 100);
+            progressBar.style.width = progress + '%';
+
+            // Эффект тряски экрана (если играем)
+            if (taps % 10 === 0) {
+                document.body.classList.add('shake');
+                setTimeout(() => document.body.classList.remove('shake'), 300);
             }
-            updateUI();
-        }
 
-        // Сохранение
-        function saveGame() {
-            const data = { orbs, clickPower, autoPower, multiplier, lvlPower, lvlAuto, lvlMult, costPower, costAuto, costMult };
-            localStorage.setItem('gdClickerSave', JSON.stringify(data));
-        }
+            // Создаем частицу в месте клика
+            createParticle(e.clientX, e.clientY);
 
-        // Обновление интерфейса
-        function updateUI() {
-            uiOrbs.textContent = Math.floor(orbs);
-            uiOps.textContent = Math.floor(autoPower * multiplier);
-
-            document.getElementById('lvl-power').textContent = lvlPower;
-            document.getElementById('lvl-auto').textContent = lvlAuto;
-            document.getElementById('lvl-mult').textContent = lvlMult;
-
-            // Обновление цен и визуала
-            updateShopBtn('btn-power', 'cost-power', costPower);
-            updateShopBtn('btn-auto', 'cost-auto', costAuto);
-            updateShopBtn('btn-mult', 'cost-mult', costMult);
-        }
-
-        function updateShopBtn(btnId, costId, cost) {
-            const btn = document.getElementById(btnId);
-            const costEl = document.getElementById(costId);
-            
-            costEl.textContent = `Цена: ${cost}`;
-            
-            if (orbs >= cost) {
-                btn.classList.add('affordable');
-                costEl.classList.remove('cant-afford');
-            } else {
-                btn.classList.remove('affordable');
-                costEl.classList.add('cant-afford');
+            // Проверка на победу
+            if (taps >= levels[currentLevelIndex].target) {
+                endGame(true);
             }
-        }
-
-        // --- КЛИК ПО КУБУ ---
-        clickArea.addEventListener('pointerdown', (e) => {
-            initAudio();
-            
-            // Визуальный эффект
-            cube.classList.add('clicked');
-            setTimeout(() => cube.classList.remove('clicked'), 100);
-
-            // Начисление осколков
-            const gain = clickPower * multiplier;
-            orbs += gain;
-            
-            // Звук
-            playSound('click');
-
-            // Всплывающий текст
-            const rect = clickArea.getBoundingClientRect();
-            const floatText = document.createElement('div');
-            floatText.classList.add('floating-text');
-            floatText.textContent = `+${gain}`;
-            floatText.style.left = (e.clientX - 20) + 'px';
-            floatText.style.top = (e.clientY - 20) + 'px';
-            document.body.appendChild(floatText);
-            
-            setTimeout(() => floatText.remove(), 800);
-
-            updateUI();
         });
 
-        // --- МАГАЗИН ---
-        function buyUpgrade(type) {
-            initAudio();
-            if (type === 'power' && orbs >= costPower) {
-                orbs -= costPower;
-                lvlPower++;
-                clickPower += 1; // +1 к клику
-                costPower = Math.floor(costPower * 1.5); // Дорожает
-                playSound('buy');
-            } 
-            else if (type === 'auto' && orbs >= costAuto) {
-                orbs -= costAuto;
-                lvlAuto++;
-                autoPower += 1; // +1 в секунду
-                costAuto = Math.floor(costAuto * 1.6);
-                playSound('buy');
-            } 
-            else if (type === 'mult' && orbs >= costMult) {
-                orbs -= costMult;
-                lvlMult++;
-                multiplier *= 2; // x2 ко всему
-                costMult = Math.floor(costMult * 3); // Очень дорогое
-                playSound('buy');
-            } 
-            else {
-                playSound('error');
-                return;
-            }
-            updateUI();
-            saveGame();
+        // Запрет на стандартное поведение (например, выделение или контекстное меню)
+        tapBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+        function createParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            const emojis = ['⭐', '🔥', '💥', '⚡', '👍', '💪'];
+            particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            
+            // Рандомное направление разлета
+            const tx = (Math.random() - 0.5) * 200;
+            const ty = (Math.random() - 0.5) * 200 - 50; // Чуть вверх
+            particle.style.setProperty('--tx', tx + 'px');
+            particle.style.setProperty('--ty', ty + 'px');
+            
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 500);
         }
 
-        // --- ИГРОВОЙ ЦИКЛ (АВТОКЛИК) ---
-        // Каждые 100мс добавляем часть дохода (делим на 10)
-        setInterval(() => {
-            if (autoPower > 0) {
-                orbs += (autoPower * multiplier) / 10;
-                updateUI();
+        function endGame(isWin) {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            
+            const title = document.getElementById('result-title');
+            const emoji = document.getElementById('result-emoji');
+            const stats = document.getElementById('result-stats');
+            const nextBtn = document.getElementById('next-level-btn');
+
+            if (isWin) {
+                playSound('win');
+                vibrate([50, 50, 50, 50, 100]); // Победная вибрация
+                title.textContent = "ПОБЕДА!";
+                title.className = "result-title win";
+                emoji.textContent = "🏆";
+                stats.textContent = `Ты сделал ${taps} тапов!`;
+                
+                // Разблокировка следующего
+                if (levels[currentLevelIndex].id === unlockedLevel && unlockedLevel < levels.length) {
+                    unlockedLevel++;
+                    localStorage.setItem('tapUnlocked', unlockedLevel);
+                }
+
+                // Настройка кнопки "Дальше"
+                if (currentLevelIndex < levels.length - 1) {
+                    nextBtn.style.display = 'block';
+                } else {
+                    nextBtn.style.display = 'none'; // Если прошел всё
+                    stats.textContent = "ТЫ ПРОШЕЛ ВСЮ ИГРУ! КРАСАВА! 👑";
+                }
+            } else {
+                playSound('lose');
+                vibrate([100, 100, 100]); // Вибрация проигрыша
+                title.textContent = "ВРЕМЯ ВЫШЛО";
+                title.className = "result-title lose";
+                emoji.textContent = "💀";
+                stats.textContent = `Не хватило ${levels[currentLevelIndex].target - taps} тапов...`;
+                nextBtn.style.display = 'none';
             }
-        }, 100);
 
-        // Автосохранение каждые 5 секунд
-        setInterval(saveGame, 5000);
+            switchScreen('result-screen');
+        }
 
-        // Инициализация
-        loadGame();
+        function nextLevel() {
+            if (currentLevelIndex < levels.length - 1) {
+                startGame(currentLevelIndex + 1);
+            }
+        }
+
+        // Запуск
+        renderMenu();
     </script>
 </body>
 </html>
