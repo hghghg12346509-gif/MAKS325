@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minecraft Кузнец Симулятор</title>
+    <title>Geometry Dash Clicker</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
 
         :root {
-            --bg: #2b2b2b;
-            --dirt: #8b5a2b;
-            --stone: #7f8c8d;
-            --wood: #5c4033;
-            --gold: #ffd700;
-            --text: #fff;
+            --bg: #050510;
+            --cyan: #00ffff;
+            --magenta: #ff00ff;
+            --yellow: #ffff00;
+            --green: #39ff14;
+            --panel: rgba(20, 20, 35, 0.9);
         }
 
         * {
             box-sizing: border-box;
-            font-family: 'Press Start 2P', monospace;
+            font-family: 'Orbitron', sans-serif;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
@@ -26,187 +26,204 @@
         body {
             margin: 0; padding: 0;
             background-color: var(--bg);
-            background-image: 
-                repeating-linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a), 
-                repeating-linear-gradient(45deg, #1a1a1a 25%, #222 25%, #222 75%, #1a1a1a 75%, #1a1a1a);
-            background-size: 40px 40px;
-            background-position: 0 0, 20px 20px;
-            color: var(--text);
-            height: 100vh;
+            color: #fff;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             overflow: hidden;
-        }
-
-        /* ШАПКА (Ресурсы) */
-        #top-bar {
-            width: 100%; height: 60px;
-            background: #111; border-bottom: 4px solid #000;
-            display: flex; justify-content: space-around; align-items: center;
-            font-size: 12px; z-index: 10;
-        }
-        .resource { display: flex; align-items: center; gap: 5px; }
-        .resource span { color: var(--gold); font-size: 14px; }
-
-        /* ИГРОВОЕ ПОЛЕ */
-        #game-board {
-            flex: 1;
-            width: 100%;
-            max-width: 600px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 5px;
-            padding: 5px;
-            background: #3e2723;
             position: relative;
         }
 
-        /* Кузнечик на фоне */
-        #grasshopper {
+        /* Неоновая сетка на фоне */
+        .grid-bg {
             position: absolute;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            font-size: 60px;
-            z-index: 1;
-            opacity: 0.3;
-            pointer-events: none;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            perspective: 500px;
+            transform: scale(1.5);
+            animation: gridMove 2s linear infinite;
+        }
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 40px; }
         }
 
-        /* Станции */
-        .station {
-            background: var(--wood);
-            border: 4px solid #000;
-            border-top-color: #7a5443;
-            border-left-color: #7a5443;
+        /* Верхняя панель */
+        #top-bar {
+            width: 100%; max-width: 600px;
+            display: flex; justify-content: space-between;
+            padding: 20px; z-index: 10;
+        }
+        .stat-box {
+            background: var(--panel);
+            border: 2px solid var(--cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box span { display: block; color: var(--cyan); font-size: 24px; font-weight: 900; }
+        .stat-box p { margin: 0; font-size: 12px; color: #aaa; }
+
+        /* Игровое поле (Куб) */
+        #click-area {
+            flex: 1;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-        .station:active { transform: scale(0.95); }
-        
-        .station-icon { font-size: 50px; z-index: 2; filter: drop-shadow(2px 2px 0 #000); }
-        .station-name { font-size: 8px; margin-top: 10px; background: rgba(0,0,0,0.7); padding: 4px; z-index: 2; }
-
-        /* Визуальные эффекты */
-        .particle {
-            position: absolute; font-size: 20px; pointer-events: none;
-            animation: pop 0.5s forwards; z-index: 5;
-        }
-        @keyframes pop {
-            0% { transform: scale(0.5); opacity: 1; }
-            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
-        }
-
-        /* Эффект горения печи */
-        .burning { background: #ff5722 !important; box-shadow: inset 0 0 30px #ff0000; }
-        
-        /* Трещины на камне */
-        .cracked { animation: shake 0.2s; filter: brightness(0.7); }
-        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }
-
-        /* Индикаторы прогресса (стрелочки) */
-        .action-hint {
-            position: absolute; top: 10px; right: 10px;
-            font-size: 20px; animation: bounceHint 1s infinite alternate;
-        }
-        @keyframes bounceHint { from { transform: translateY(0); } to { transform: translateY(-5px); } }
-        .hidden { display: none !important; }
-
-        /* МАГАЗИН УЛУЧШЕНИЙ */
-        #shop {
             width: 100%;
-            background: #222;
-            border-top: 4px solid #000;
-            padding: 10px;
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-        }
-        .upg-btn {
-            background: var(--stone);
-            border: 3px solid #000;
-            padding: 8px;
-            min-width: 120px;
-            text-align: center;
-            font-size: 8px;
-            color: #fff;
             cursor: pointer;
-            flex-shrink: 0;
+            z-index: 10;
         }
-        .upg-btn:active { transform: scale(0.95); }
-        .upg-btn span { color: var(--gold); display: block; margin-top: 5px; font-size: 10px; }
+
+        #cube {
+            width: 120px; height: 120px;
+            background: var(--cyan);
+            border: 4px solid #fff;
+            box-shadow: 0 0 30px var(--cyan), inset 0 0 20px #fff;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
         
-        /* Сообщение от кузнечика */
-        #gh-speech {
-            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.9); border: 2px solid #4caf50; padding: 10px;
-            font-size: 8px; color: #4caf50; z-index: 20; text-align: center; width: 80%; max-width: 400px;
-            pointer-events: none; transition: opacity 0.3s;
+        /* Лицо куба (чтобы было похоже на иконку из GD) */
+        #cube::before {
+            content: '👁️';
+            font-size: 50px;
+            filter: grayscale(1) brightness(0.2); /* Делаем глаз темным */
+        }
+
+        #cube.clicked {
+            transform: scale(0.8) rotate(90deg);
+            background: var(--magenta);
+            box-shadow: 0 0 50px var(--magenta);
+        }
+
+        /* Всплывающий текст (+1) */
+        .floating-text {
+            position: absolute;
+            color: var(--yellow);
+            font-size: 24px;
+            font-weight: 900;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 0 0 10px var(--yellow);
+            z-index: 20;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+
+        /* Магазин (Улучшения) */
+        #shop {
+            width: 100%; max-width: 600px;
+            background: var(--panel);
+            border-top: 4px solid var(--magenta);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -10px 30px rgba(255, 0, 255, 0.2);
+        }
+
+        .upgrade-btn {
+            background: #111;
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upgrade-btn:hover { border-color: var(--yellow); }
+        .upgrade-btn:active { transform: scale(0.98); }
+        
+        .upgrade-btn.affordable {
+            border-color: var(--green);
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+        }
+
+        .upg-info { text-align: left; }
+        .upg-title { font-size: 16px; font-weight: 900; color: #fff; margin-bottom: 5px; }
+        .upg-desc { font-size: 12px; color: #888; }
+        
+        .upg-cost {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--green);
+            background: rgba(57, 255, 20, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .upg-cost.cant-afford { color: #ff3333; background: rgba(255, 51, 51, 0.1); }
+
+        @media (min-width: 600px) {
+            #shop { flex-direction: row; }
+            .upgrade-btn { flex: 1; flex-direction: column; text-align: center; gap: 10px; }
+            .upg-info { text-align: center; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Ресурсы -->
+    <div class="grid-bg"></div>
+
     <div id="top-bar">
-        <div class="resource">🪨 <span id="ui-ore">0</span></div>
-        <div class="resource">🟨 <span id="ui-ingot">0</span></div>
-        <div class="resource">⚔️ <span id="ui-sword">0</span></div>
-        <div class="resource">🪙 <span id="ui-coin">0</span></div>
-    </div>
-
-    <!-- Подсказка кузнечика -->
-    <div id="gh-speech">Привет! Начни копать руду (🪨)!</div>
-
-    <!-- Игровое поле -->
-    <div id="game-board">
-        <div id="grasshopper">🦗</div>
-
-        <!-- 1. РУДНИК -->
-        <div class="station" id="st-mine" onclick="mineOre()">
-            <div class="station-icon" id="icon-mine">🪨</div>
-            <div class="station-name">ШАХТА</div>
-            <div class="action-hint" id="hint-mine">⛏️</div>
+        <div class="stat-box">
+            <span id="ui-orbs">0</span>
+            <p>ОСКОЛКИ</p>
         </div>
-
-        <!-- 2. ПЕЧЬ -->
-        <div class="station" id="st-furnace" onclick="smeltOre()">
-            <div class="station-icon" id="icon-furnace">🔥</div>
-            <div class="station-name">ПЕЧЬ</div>
-            <div class="action-hint hidden" id="hint-furnace">🪨</div>
-        </div>
-
-        <!-- 3. НАКОВАЛЬНЯ -->
-        <div class="station" id="st-anvil" onclick="forgeSword()">
-            <div class="station-icon" id="icon-anvil">⚒️</div>
-            <div class="station-name">НАКОВАЛЬНЯ</div>
-            <div class="action-hint hidden" id="hint-anvil">🟨</div>
-        </div>
-
-        <!-- 4. ПРОДАЖА -->
-        <div class="station" id="st-shop" onclick="sellSword()">
-            <div class="station-icon" id="icon-shop">🏪</div>
-            <div class="station-name">ПРОДАЖА</div>
-            <div class="action-hint hidden" id="hint-shop">⚔️</div>
+        <div class="stat-box">
+            <span id="ui-ops" style="color: var(--magenta); text-shadow: 0 0 10px var(--magenta);">0</span>
+            <p>В СЕКУНДУ</p>
         </div>
     </div>
 
-    <!-- Улучшения -->
+    <div id="click-area">
+        <div id="cube"></div>
+    </div>
+
     <div id="shop">
-        <div class="upg-btn" onclick="upgrade('pickaxe')">КИРКА<span id="cost-pickaxe">50🪙</span></div>
-        <div class="upg-btn" onclick="upgrade('furnace')">ПЕЧЬ<span id="cost-furnace">80🪙</span></div>
-        <div class="upg-btn" onclick="upgrade('anvil')">МОЛОТ<span id="cost-anvil">100🪙</span></div>
+        <div class="upgrade-btn" id="btn-power" onclick="buyUpgrade('power')">
+            <div class="upg-info">
+                <div class="upg-title">Сила Куба (Ур. <span id="lvl-power">1</span>)</div>
+                <div class="upg-desc">+1 осколок за клик</div>
+            </div>
+            <div class="upg-cost" id="cost-power">Цена: 10</div>
+        </div>
+        
+        <div class="upgrade-btn" id="btn-auto" onclick="buyUpgrade('auto')">
+            <div class="upg-info">
+                <div class="upg-title">Дрон (Ур. <span id="lvl-auto">0</span>)</div>
+                <div class="upg-desc">+1 осколок в секунду</div>
+            </div>
+            <div class="upg-cost" id="cost-auto">Цена: 50</div>
+        </div>
+
+        <div class="upgrade-btn" id="btn-mult" onclick="buyUpgrade('mult')">
+            <div class="upg-info">
+                <div class="upg-title">Мега-Буст (Ур. <span id="lvl-mult">0</span>)</div>
+                <div class="upg-desc">x2 ко всему доходу</div>
+            </div>
+            <div class="upg-cost" id="cost-mult">Цена: 500</div>
+        </div>
     </div>
 
     <script>
-        // --- ЗВУКИ (Web Audio API) ---
+        // --- АУДИО ДВИЖОК ---
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
         document.body.addEventListener('pointerdown', initAudio, { once: true });
@@ -218,213 +235,182 @@
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
-            if (type === 'hit') { // Удар киркой/молотом
-                osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
-            } else if (type === 'smelt') { // Шипение печи
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            if (type === 'click') {
+                // Звук прыжка (короткий высокий писк)
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.05);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
+            } else if (type === 'buy') {
+                // Звук покупки (восходящее арпеджио)
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(600, now + 0.1);
+                osc.frequency.setValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
                 osc.start(now); osc.stop(now + 0.3);
-            } else if (type === 'sell') { // Звон монет
-                osc.type = 'sine'; osc.frequency.setValueAtTime(988, now); osc.frequency.setValueAtTime(1319, now + 0.1);
-                gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                osc.start(now); osc.stop(now + 0.3);
-            } else if (type === 'upgrade') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(800, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
             } else if (type === 'error') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
             }
         }
 
         // --- СОСТОЯНИЕ ИГРЫ ---
-        let ore = 0, ingots = 0, swords = 0, coins = 0;
-        
-        let pickaxeLvl = 1;
-        let furnaceLvl = 1;
-        let anvilLvl = 1;
+        let orbs = 0;
+        let clickPower = 1;
+        let autoPower = 0;
+        let multiplier = 1;
 
-        let costPickaxe = 50, costFurnace = 80, costAnvil = 100;
+        let lvlPower = 1;
+        let lvlAuto = 0;
+        let lvlMult = 0;
 
-        // Таймеры и флаги
-        let isSmelting = false;
-        let forgeHits = 0;
-        let maxForgeHits = 3 - (anvilLvl > 3 ? 1 : 0); // На высоком уровне нужно меньше ударов
-        let mineHits = 0, maxMineHits = 4;
+        let costPower = 10;
+        let costAuto = 50;
+        let costMult = 500;
 
-        // DOM
-        const uiOre = document.getElementById('ui-ore');
-        const uiIngot = document.getElementById('ui-ingot');
-        const uiSword = document.getElementById('ui-sword');
-        const uiCoin = document.getElementById('ui-coin');
-        const ghSpeech = document.getElementById('gh-speech');
-        
-        const hintFurnace = document.getElementById('hint-furnace');
-        const hintAnvil = document.getElementById('hint-anvil');
-        const hintShop = document.getElementById('hint-shop');
-        const iconAnvil = document.getElementById('icon-anvil');
-        const stFurnace = document.getElementById('st-furnace');
-        const iconMine = document.getElementById('icon-mine');
+        // DOM Элементы
+        const uiOrbs = document.getElementById('ui-orbs');
+        const uiOps = document.getElementById('ui-ops');
+        const cube = document.getElementById('cube');
+        const clickArea = document.getElementById('click-area');
 
+        // Загрузка сохранения
+        function loadGame() {
+            const saved = localStorage.getItem('gdClickerSave');
+            if (saved) {
+                const data = JSON.parse(saved);
+                orbs = data.orbs || 0;
+                clickPower = data.clickPower || 1;
+                autoPower = data.autoPower || 0;
+                multiplier = data.multiplier || 1;
+                lvlPower = data.lvlPower || 1;
+                lvlAuto = data.lvlAuto || 0;
+                lvlMult = data.lvlMult || 0;
+                costPower = data.costPower || 10;
+                costAuto = data.costAuto || 50;
+                costMult = data.costMult || 500;
+            }
+            updateUI();
+        }
+
+        // Сохранение
+        function saveGame() {
+            const data = { orbs, clickPower, autoPower, multiplier, lvlPower, lvlAuto, lvlMult, costPower, costAuto, costMult };
+            localStorage.setItem('gdClickerSave', JSON.stringify(data));
+        }
+
+        // Обновление интерфейса
         function updateUI() {
-            uiOre.textContent = ore;
-            uiIngot.textContent = ingots;
-            uiSword.textContent = swords;
-            uiCoin.textContent = coins;
+            uiOrbs.textContent = Math.floor(orbs);
+            uiOps.textContent = Math.floor(autoPower * multiplier);
 
-            // Показываем подсказки (стрелочки)
-            hintFurnace.classList.toggle('hidden', ore === 0 || isSmelting);
-            hintAnvil.classList.toggle('hidden', ingots === 0 || swords > 0);
-            hintShop.classList.toggle('hidden', swords === 0);
+            document.getElementById('lvl-power').textContent = lvlPower;
+            document.getElementById('lvl-auto').textContent = lvlAuto;
+            document.getElementById('lvl-mult').textContent = lvlMult;
+
+            // Обновление цен и визуала
+            updateShopBtn('btn-power', 'cost-power', costPower);
+            updateShopBtn('btn-auto', 'cost-auto', costAuto);
+            updateShopBtn('btn-mult', 'cost-mult', costMult);
+        }
+
+        function updateShopBtn(btnId, costId, cost) {
+            const btn = document.getElementById(btnId);
+            const costEl = document.getElementById(costId);
             
-            // Обновляем цены
-            document.getElementById('cost-pickaxe').textContent = costPickaxe + '🪙';
-            document.getElementById('cost-furnace').textContent = costFurnace + '🪙';
-            document.getElementById('cost-anvil').textContent = costAnvil + '🪙';
-        }
-
-        function say(text) {
-            ghSpeech.textContent = text;
-            ghSpeech.style.opacity = '1';
-            setTimeout(() => { ghSpeech.style.opacity = '0'; }, 3000);
-        }
-
-        function createParticle(x, y, emoji) {
-            const p = document.createElement('div');
-            p.classList.add('particle');
-            p.textContent = emoji;
-            p.style.left = x + 'px';
-            p.style.top = y + 'px';
-            document.body.appendChild(p);
-            setTimeout(() => p.remove(), 500);
-        }
-
-        // --- 1. ШАХТА ---
-        function mineOre() {
-            if (isSmelting) return; // Нельзя копать во время плавки (для баланса)
+            costEl.textContent = `Цена: ${cost}`;
             
-            playSound('hit');
-            iconMine.classList.add('cracked');
-            setTimeout(() => iconMine.classList.remove('cracked'), 200);
-
-            const rect = document.getElementById('st-mine').getBoundingClientRect();
-            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '💥');
-
-            mineHits++;
-            if (mineHits >= maxMineHits) {
-                mineHits = 0;
-                ore += pickaxeLvl;
-                updateUI();
-                createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '🪨');
-                say(`+${pickaxeLvl} руды! Отнеси в печь.`);
-            }
-        }
-
-        // --- 2. ПЕЧЬ ---
-        function smeltOre() {
-            if (ore <= 0) { playSound('error'); say("Нет руды! Сначала накопай."); return; }
-            if (isSmelting) { say("Печь уже работает!"); return; }
-
-            ore--;
-            isSmelting = true;
-            stFurnace.classList.add('burning');
-            playSound('smelt');
-            updateUI();
-            say("Плавлю руду...");
-
-            // Время плавки зависит от уровня печи (чем выше, тем быстрее)
-            const smeltTime = Math.max(1000, 3000 - (furnaceLvl * 500));
-
-            setTimeout(() => {
-                isSmelting = false;
-                stFurnace.classList.remove('burning');
-                ingots++;
-                playSound('sell'); // Звук готовности
-                say("Слиток готов! Тащи на наковальню.");
-                updateUI();
-            }, smeltTime);
-        }
-
-        // --- 3. НАКОВАЛЬНЯ ---
-        function forgeSword() {
-            if (swords > 0) { playSound('error'); say("У тебя уже есть меч! Иди продавай."); return; }
-            if (ingots <= 0) { playSound('error'); say("Нужен слиток!"); return; }
-
-            playSound('hit');
-            
-            // Анимация удара
-            iconAnvil.style.transform = 'scale(0.8)';
-            setTimeout(() => iconAnvil.style.transform = 'scale(1)', 100);
-
-            const rect = document.getElementById('st-anvil').getBoundingClientRect();
-            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '✨');
-
-            forgeHits++;
-            if (forgeHits >= maxForgeHits) {
-                forgeHits = 0;
-                ingots--;
-                swords++;
-                updateUI();
-                say("Меч выкован! Неси на продажу.");
-                playSound('sell');
+            if (orbs >= cost) {
+                btn.classList.add('affordable');
+                costEl.classList.remove('cant-afford');
             } else {
-                say(`Ещё удар! (${forgeHits}/${maxForgeHits})`);
+                btn.classList.remove('affordable');
+                costEl.classList.add('cant-afford');
             }
         }
 
-        // --- 4. ПРОДАЖА ---
-        function sellSword() {
-            if (swords <= 0) { playSound('error'); say("Нечего продавать!"); return; }
-
-            swords--;
-            // Цена меча зависит от уровня наковальни
-            const price = 20 + (anvilLvl * 10); 
-            coins += price;
-            playSound('sell');
-            updateUI();
+        // --- КЛИК ПО КУБУ ---
+        clickArea.addEventListener('pointerdown', (e) => {
+            initAudio();
             
-            const rect = document.getElementById('st-shop').getBoundingClientRect();
-            createParticle(rect.left + rect.width/2, rect.top + rect.height/2, '🪙');
-            say(`Продано за ${price} монет!`);
-        }
+            // Визуальный эффект
+            cube.classList.add('clicked');
+            setTimeout(() => cube.classList.remove('clicked'), 100);
 
-        // --- УЛУЧШЕНИЯ ---
-        function upgrade(type) {
-            playSound('error'); // По умолчанию звук ошибки
+            // Начисление осколков
+            const gain = clickPower * multiplier;
+            orbs += gain;
+            
+            // Звук
+            playSound('click');
 
-            if (type === 'pickaxe' && coins >= costPickaxe) {
-                coins -= costPickaxe;
-                pickaxeLvl++;
-                costPickaxe = Math.floor(costPickaxe * 1.8);
-                maxMineHits = Math.max(2, maxMineHits - 1); // Копать станет легче
-                playSound('upgrade'); say("Кирка улучшена! Копаем быстрее.");
+            // Всплывающий текст
+            const rect = clickArea.getBoundingClientRect();
+            const floatText = document.createElement('div');
+            floatText.classList.add('floating-text');
+            floatText.textContent = `+${gain}`;
+            floatText.style.left = (e.clientX - 20) + 'px';
+            floatText.style.top = (e.clientY - 20) + 'px';
+            document.body.appendChild(floatText);
+            
+            setTimeout(() => floatText.remove(), 800);
+
+            updateUI();
+        });
+
+        // --- МАГАЗИН ---
+        function buyUpgrade(type) {
+            initAudio();
+            if (type === 'power' && orbs >= costPower) {
+                orbs -= costPower;
+                lvlPower++;
+                clickPower += 1; // +1 к клику
+                costPower = Math.floor(costPower * 1.5); // Дорожает
+                playSound('buy');
             } 
-            else if (type === 'furnace' && coins >= costFurnace) {
-                coins -= costFurnace;
-                furnaceLvl++;
-                costFurnace = Math.floor(costFurnace * 1.8);
-                playSound('upgrade'); say("Печь улучшена! Плавит быстрее.");
+            else if (type === 'auto' && orbs >= costAuto) {
+                orbs -= costAuto;
+                lvlAuto++;
+                autoPower += 1; // +1 в секунду
+                costAuto = Math.floor(costAuto * 1.6);
+                playSound('buy');
             } 
-            else if (type === 'anvil' && coins >= costAnvil) {
-                coins -= costAnvil;
-                anvilLvl++;
-                costAnvil = Math.floor(costAnvil * 1.8);
-                maxForgeHits = Math.max(1, maxForgeHits - 1); // Нужно меньше ударов
-                playSound('upgrade'); say("Молот улучшен! Мечи дороже.");
+            else if (type === 'mult' && orbs >= costMult) {
+                orbs -= costMult;
+                lvlMult++;
+                multiplier *= 2; // x2 ко всему
+                costMult = Math.floor(costMult * 3); // Очень дорогое
+                playSound('buy');
             } 
             else {
-                say("Не хватает монет!");
+                playSound('error');
                 return;
             }
             updateUI();
+            saveGame();
         }
 
+        // --- ИГРОВОЙ ЦИКЛ (АВТОКЛИК) ---
+        // Каждые 100мс добавляем часть дохода (делим на 10)
+        setInterval(() => {
+            if (autoPower > 0) {
+                orbs += (autoPower * multiplier) / 10;
+                updateUI();
+            }
+        }, 100);
+
+        // Автосохранение каждые 5 секунд
+        setInterval(saveGame, 5000);
+
         // Инициализация
-        updateUI();
+        loadGame();
     </script>
 </body>
 </html>
